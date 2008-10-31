@@ -448,7 +448,6 @@ class MyFrame(wx.Frame):
         return True
 
 
-
     #
     # redraw the graphs to use kWh as a unit in the graph
     #

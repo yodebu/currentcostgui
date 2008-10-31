@@ -264,7 +264,7 @@ class GoogleAppEngine():
             # don't upload empty items (CurrentCost meters fill in empty 
             #   values with 0)
 
-            if updat['ccvalue'] != 0:
+            if updat['ccvalue'] > 0:
                 postreq_data = urllib.urlencode( { "ccdatatype"  : "hour",
                                                    "ccdatavalue" : updat['ccvalue'],
                                                    "ccyear"      : updat['timestamp'].year,
@@ -319,7 +319,7 @@ class GoogleAppEngine():
             # don't upload empty items (CurrentCost meters fill in empty 
             #   values with 0)
 
-            if updat['ccvalue'] != 0:
+            if updat['ccvalue'] > 0:
                 postreq_data = urllib.urlencode( { "ccdatatype"  : "day",
                                                    "ccdatavalue" : updat['ccvalue'],
                                                    "ccyear"      : updat['timestamp'].year,
@@ -374,7 +374,7 @@ class GoogleAppEngine():
             # don't upload empty items (CurrentCost meters fill in empty 
             #   values with 0)
 
-            if updat['ccvalue'] != 0:  
+            if updat['ccvalue'] > 0:  
                 postreq_data = urllib.urlencode( { "ccdatatype"  : "month",
                                                    "ccdatavalue" : updat['ccvalue'],
                                                    "ccyear"      : updat['timestamp'].year,

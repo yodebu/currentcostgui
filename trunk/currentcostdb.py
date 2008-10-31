@@ -85,17 +85,20 @@ class CurrentCostDB():
     ############################################################ 
     #
     def StoreHourData(self, timestamp, ccvalue):
-        self.connection.execute('INSERT OR REPLACE INTO hourdata(ts, ccvalue, hourofday, uploaded) values(?, ?, ?, ?)',
-                                (timestamp, ccvalue, timestamp.hour, 0))
-        self.connection.commit()
+        if ccvalue > 0:
+            self.connection.execute('INSERT OR REPLACE INTO hourdata(ts, ccvalue, hourofday, uploaded) values(?, ?, ?, ?)',
+                                    (timestamp, ccvalue, timestamp.hour, 0))
+            self.connection.commit()
     def StoreDayData(self, timestamp, ccvalue):
-        self.connection.execute('INSERT OR REPLACE INTO daydata(d, ccvalue, dayofweek, uploaded) values(?, ?, ?, ?)',
-                                (timestamp, ccvalue, timestamp.weekday(), 0))
-        self.connection.commit()
+        if ccvalue > 0:
+            self.connection.execute('INSERT OR REPLACE INTO daydata(d, ccvalue, dayofweek, uploaded) values(?, ?, ?, ?)',
+                                    (timestamp, ccvalue, timestamp.weekday(), 0))
+            self.connection.commit()
     def StoreMonthData(self, timestamp, ccvalue):
-        self.connection.execute('INSERT OR REPLACE INTO monthdata(d, ccvalue, uploaded) values(?, ?, ?)',
-                                (timestamp, ccvalue, 0))
-        self.connection.commit()
+        if ccvalue > 0:
+            self.connection.execute('INSERT OR REPLACE INTO monthdata(d, ccvalue, uploaded) values(?, ?, ?)',
+                                    (timestamp, ccvalue, 0))
+            self.connection.commit()
 
     #
     ############################################################
@@ -250,4 +253,5 @@ class CurrentCostDB():
         for row in self.connection.execute("SELECT ts, ccvalue FROM hourdata"):
             hourdatacollection[row[0]] = row[1]
         return hourdatacollection
+
 
