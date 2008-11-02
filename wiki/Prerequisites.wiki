@@ -1,0 +1,23 @@
+#summary List of Python modules required for the app
+#labels Phase-Deploy,Featured
+
+= Introduction =
+
+The CurrentCost app uses a number of Python modules. This page will contain instructions on how to set up the necessary pre-reqs.
+
+= Details =
+
+  * matplotlib  :: http://matplotlib.sourceforge.net/users/installing.html
+  * numpy :: http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=175103
+  * pyserial :: http://pyserial.wiki.sourceforge.net/pySerial
+  * pysqlite :: http://oss.itsystementwicklung.de/trac/pysqlite/
+  * pywin32  :: http://sourceforge.net/project/showfiles.php?group_id=78018
+  * setuptools :: http://pypi.python.org/pypi/setuptools/
+  * wxpython  :: http://wxpython.org/download.php
+
+Most of these can be installed using easy install
+
+E.g. 
+easy_install wxpython
+
+Which saves having to manually download and install each of the prereqs. 
