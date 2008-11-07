@@ -35,6 +35,40 @@ from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator,
 
 class CurrentCostVisualisations():
 
+
+    #
+    # add a note to the graph
+    # 
+    def AddNote(self, notetext, clickedaxes, clickeddatetime, dtfraction, clickedkwh, kwhfactor, clickedaxestype):
+        wdth = None
+        ctr = None
+        arrowlength = 0
+        spacing = 0
+
+        if clickedaxestype == "hours":
+            wdth = 0.083333333333333333333333333333333
+            ctr = clickeddatetime + datetime.timedelta(hours=1) + datetime.timedelta(days=dtfraction)
+            spacing = 0.1
+            arrowlength = 1
+        elif clickedaxestype == "days":
+            wdth = 1
+            ctr = clickeddatetime + datetime.timedelta(hours=12)
+            spacing = 0.5
+            arrowlength = 3
+        elif clickedaxestype == "months":
+            wdth = nummdays(clickeddatetime)
+            ctr = clickeddatetime + datetime.timedelta(days=(wdth / 2))
+            spacing = 10
+            arrowlength = 60
+
+        clickedaxes.annotate(notetext, 
+                             arrowprops=dict(facecolor='black', shrink=0.05),
+                             xy=(ctr,     (clickedkwh * kwhfactor) + spacing),
+                             xytext=(ctr, (clickedkwh * kwhfactor) + arrowlength),
+                             horizontalalignment='center')
+        clickedaxes.figure.canvas.draw()
+
+
     #
     # draw hourly power usage
     # 
@@ -145,8 +179,14 @@ class CurrentCostVisualisations():
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
             # often throwing an exception if we try!
             if v > 0:
-                axes.bar(k, (v * kwhfactor), width=nummdays(k), color='r', picker=True)
-    
+                wdth = nummdays(k)
+                #ctr = k + datetime.timedelta(days=(wdth / 2))
+                axes.bar(k, (v * kwhfactor), width=wdth, color='r', picker=True)
+                #axes.annotate('problems', 
+                #              arrowprops=dict(facecolor='black', shrink=0.05),
+                #              xy=(ctr,     (v * kwhfactor) + 10),
+                #              xytext=(k,   (v * kwhfactor) + 50))
+
         # rotate the axes labels
         for label in axes.get_xticklabels():
             label.set_picker(True)
