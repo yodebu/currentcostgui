@@ -762,6 +762,39 @@ def connectToDatabase():
     return True
 
 
+def onMouseClick(event):
+    clickedbar = event.artist
+    atimestamp = clickedbar.get_x()
+    clickedtimestamp = math.floor(atimestamp)
+    fraction = atimestamp - clickedtimestamp
+    clickeddatetime = datetime.datetime.fromordinal(int(clickedtimestamp))
+    clickedkwh = None
+    clickedgraph = None
+    kwhcost = 1
+
+    if graphunits == "kWh":
+        clickedkwh = clickedbar.get_height()
+    else:
+        kwhcost = float(ccdb.RetrieveSetting("kwhcost"))
+        clickedkwh = clickedbar.get_height() / kwhcost
+
+    clickedaxes = clickedbar.get_axes()
+    if clickedaxes == axes1:
+        clickedgraph = "hours"        
+    elif clickedaxes == axes2:
+        clickedgraph = "days"
+    elif clickedaxes == axes3:
+        clickedgraph = "months"
+
+    dlg = wx.TextEntryDialog(None, 'Add a note:','CurrentCost')
+    if dlg.ShowModal() == wx.ID_OK:
+        newnote = dlg.GetValue()
+        ccvis = CurrentCostVisualisations()
+        ccvis.AddNote(newnote, clickedaxes, clickeddatetime, fraction, clickedkwh, kwhcost, clickedgraph)        
+    dlg.Destroy()
+
+
+
 def demo():
     app = wx.App()
     frame = MyFrame(None,-1,'CurrentCost')
@@ -782,6 +815,10 @@ def demo():
     axes3.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
     axes4.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
     axes5.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
+    #
+    axes1.figure.canvas.mpl_connect('pick_event', onMouseClick)
+    axes2.figure.canvas.mpl_connect('pick_event', onMouseClick)
+    axes3.figure.canvas.mpl_connect('pick_event', onMouseClick)
     # 
     frame.Show()
     #
