@@ -601,12 +601,36 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 
     dialog.Update(3, 'Charting hourly electricity usage...')
     ccvis.PlotHourlyData(axes1, hourDataCollection, graphunits, lastkwh)
+    for storednote in ccdb.RetrieveAnnotations(1):
+        ccvis.AddNote(storednote[0], # storednote[4], 
+                      axes1, 
+                      storednote[1], 
+                      storednote[2], 
+                      storednote[5], 
+                      graphunits, lastkwh,
+                      "hours")        
 
     dialog.Update(4, 'Charting daily electricity usage...')
     ccvis.PlotDailyData(axes2, dayDataCollection, graphunits, lastkwh)
+    for storednote in ccdb.RetrieveAnnotations(2):
+        ccvis.AddNote(storednote[0], # storednote[4], 
+                      axes2, 
+                      storednote[1], 
+                      storednote[2], 
+                      storednote[5], 
+                      graphunits, lastkwh,
+                      "days")        
 
     dialog.Update(5, 'Charting monthly electricity usage...')
     ccvis.PlotMonthlyData(axes3, monthDataCollection, graphunits, lastkwh)
+    for storednote in ccdb.RetrieveAnnotations(3):        
+        ccvis.AddNote(storednote[0], # storednote[4], 
+                      axes3, 
+                      storednote[1], 
+                      storednote[2], 
+                      storednote[5], 
+                      graphunits, lastkwh,
+                      "months")        
 
     ccdata = CurrentCostDataFunctions()
     averageDayData = ccdata.CalculateAverageDay(hourDataCollection)
@@ -763,35 +787,47 @@ def connectToDatabase():
 
 
 def onMouseClick(event):
-    clickedbar = event.artist
-    atimestamp = clickedbar.get_x()
-    clickedtimestamp = math.floor(atimestamp)
-    fraction = atimestamp - clickedtimestamp
-    clickeddatetime = datetime.datetime.fromordinal(int(clickedtimestamp))
-    clickedkwh = None
-    clickedgraph = None
-    kwhcost = 1
+    global ccdb, graphunits
 
-    if graphunits == "kWh":
-        clickedkwh = clickedbar.get_height()
-    else:
-        kwhcost = float(ccdb.RetrieveSetting("kwhcost"))
-        clickedkwh = clickedbar.get_height() / kwhcost
+    if isinstance(event.artist, Text):
+        text = event.artist
+        noteid = int(text.get_text())
+        notetext = ccdb.RetrieveAnnotationText(noteid)
+        if notetext:
+            print notetext
+    elif isinstance(event.artist, Rectangle):
+        clickedbar = event.artist
+        atimestamp = clickedbar.get_x()
+        clickedtimestamp = math.floor(atimestamp)
+        fraction = atimestamp - clickedtimestamp
+        clickeddatetime = datetime.datetime.fromordinal(int(clickedtimestamp))
+        clickedkwh = None
+        clickedgraph = None
+        kwhcost = 1
+    
+        if graphunits == "kWh":
+            clickedkwh = clickedbar.get_height()
+        else:
+            kwhcost = float(ccdb.RetrieveSetting("kwhcost"))
+            clickedkwh = clickedbar.get_height() / kwhcost
+    
+        clickedaxes = clickedbar.get_axes()
+        if clickedaxes == axes1:
+            clickedgraph = "hours"        
+        elif clickedaxes == axes2:
+            clickedgraph = "days"
+        elif clickedaxes == axes3:
+            clickedgraph = "months"
+    
+        dlg = wx.TextEntryDialog(None, 'Add a note:','CurrentCost')
+        if dlg.ShowModal() == wx.ID_OK:
+            newnote = dlg.GetValue()
 
-    clickedaxes = clickedbar.get_axes()
-    if clickedaxes == axes1:
-        clickedgraph = "hours"        
-    elif clickedaxes == axes2:
-        clickedgraph = "days"
-    elif clickedaxes == axes3:
-        clickedgraph = "months"
+            ccdb.StoreAnnotation(clickeddatetime, fraction, clickedgraph, newnote, clickedkwh)
 
-    dlg = wx.TextEntryDialog(None, 'Add a note:','CurrentCost')
-    if dlg.ShowModal() == wx.ID_OK:
-        newnote = dlg.GetValue()
-        ccvis = CurrentCostVisualisations()
-        ccvis.AddNote(newnote, clickedaxes, clickeddatetime, fraction, clickedkwh, kwhcost, clickedgraph)        
-    dlg.Destroy()
+            ccvis = CurrentCostVisualisations()
+            ccvis.AddNote(newnote, clickedaxes, clickeddatetime, fraction, clickedkwh, graphunits, clickedkwh, clickedgraph)        
+        dlg.Destroy()
 
 
 

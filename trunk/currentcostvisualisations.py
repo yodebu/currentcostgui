@@ -39,7 +39,14 @@ class CurrentCostVisualisations():
     #
     # add a note to the graph
     # 
-    def AddNote(self, notetext, clickedaxes, clickeddatetime, dtfraction, clickedkwh, kwhfactor, clickedaxestype):
+    def AddNote(self, notetext, clickedaxes, clickeddatetime, dtfraction, clickedkwh, graphunits, lastkwh, clickedaxestype):
+        # do we want to plot data in kWh or financial cost?
+        kwhfactor = None
+        if graphunits == "kWh":
+            kwhfactor = 1
+        else:
+            kwhfactor = float(lastkwh)
+
         wdth = None
         ctr = None
         arrowlength = 0
@@ -48,24 +55,25 @@ class CurrentCostVisualisations():
         if clickedaxestype == "hours":
             wdth = 0.083333333333333333333333333333333
             ctr = clickeddatetime + datetime.timedelta(hours=1) + datetime.timedelta(days=dtfraction)
-            spacing = 0.1
-            arrowlength = 1
+            spacing = 0.1 * kwhfactor
+            arrowlength = 1 * kwhfactor
         elif clickedaxestype == "days":
             wdth = 1
             ctr = clickeddatetime + datetime.timedelta(hours=12)
-            spacing = 0.5
-            arrowlength = 3
+            spacing = 0.5 * kwhfactor
+            arrowlength = 3 * kwhfactor
         elif clickedaxestype == "months":
             wdth = nummdays(clickeddatetime)
             ctr = clickeddatetime + datetime.timedelta(days=(wdth / 2))
-            spacing = 10
-            arrowlength = 60
+            spacing = 10 * kwhfactor
+            arrowlength = 60 * kwhfactor
 
         clickedaxes.annotate(notetext, 
                              arrowprops=dict(facecolor='black', shrink=0.05),
                              xy=(ctr,     (clickedkwh * kwhfactor) + spacing),
                              xytext=(ctr, (clickedkwh * kwhfactor) + arrowlength),
-                             horizontalalignment='center')
+                             horizontalalignment='center',
+                             picker=True)
         clickedaxes.figure.canvas.draw()
 
 
