@@ -60,7 +60,41 @@ class CurrentCostDB():
         if not cursor.fetchone():
             cursor.execute('CREATE TABLE monthdata(d date unique, ccvalue REAL, uploaded INT)')
 
+        cursor.execute('SELECT name FROM sqlite_master WHERE type="table" AND NAME="annotation" ORDER BY name')
+        if not cursor.fetchone():
+            cursor.execute('CREATE TABLE annotation(key INTEGER PRIMARY KEY AUTOINCREMENT, ts timestamp, timeoffset REAL, graphid INT, annotation TEXT, ccvalue REAL)')
+
         self.connection.commit()
+
+
+
+    def StoreAnnotation(self, timestamp, timeoffset, graphname, annotation, value):
+        graphid = None
+        if graphname == "hours":
+            graphid = 1
+        elif graphname == "days":
+            graphid = 2
+        elif graphname == "months":
+            graphid = 3
+        else:
+            return
+
+        self.connection.execute('INSERT INTO annotation(ts, timeoffset, graphid, annotation, ccvalue) values(?, ?, ?, ?, ?)',
+                                (timestamp, timeoffset, graphid, annotation, value))
+        self.connection.commit()
+
+
+    # retrieve a collection of all persisted annotations
+    def RetrieveAnnotations(self, graphid):
+        return self.connection.execute('SELECT * FROM annotation WHERE graphid="' + str(graphid) + '"')
+    def RetrieveAnnotationText(self, annotationid):
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT * FROM annotation WHERE key="' + str(annotationid) + '"')
+        row = cursor.fetchone()
+        if row:
+            return row[4]
+        else:
+            return None
 
     # store a key-value pair in the database
     def StoreSetting(self, key, value):
