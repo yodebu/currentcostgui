@@ -792,13 +792,15 @@ def onMouseClick(event):
     if isinstance(event.artist, Text):
         text = event.artist
         noteid = int(text.get_text())
-        notetext = ccdb.RetrieveAnnotationText(noteid)
+        notetext = ccdb.RetrieveAnnotation(noteid)
         if notetext:
             if event.mouseevent.button == 1:
-                print notetext
+                print notetext[1]
+                print notetext[4]
+                print "--------------------"
             else:
                 confdlg = wx.MessageDialog(None,
-                                           'Do you want to delete the note: "' + notetext + '"?',
+                                           'Do you want to delete the note: "' + notetext[4] + '"?',
                                            'CurrentCost', 
                                           style=(wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION))
                 result = confdlg.ShowModal()        
