@@ -165,6 +165,8 @@ class MyFrame(wx.Frame):
         MENU_UPDATES = wx.NewId()
         MENU_BUGREPT = wx.NewId()
         MENU_MANUAL  = wx.NewId()
+        MENU_MATPLOT = wx.NewId()
+        MENU_HELPDOC = wx.NewId()
 
         menuBar = wx.MenuBar()
 
@@ -194,8 +196,12 @@ class MyFrame(wx.Frame):
 
         f4 = wx.Menu()
         f4.Append(MENU_HELP, "About",  "Show basic info about this app")
+        f4.AppendSeparator()
         f4.Append(MENU_UPDATES, "Check for updates", "Check that the desktop application is up-to-date")
         f4.Append(MENU_BUGREPT, "Report a bug", "Please use getsatisfaction to report bugs, ask questions, or request features")
+        f4.AppendSeparator()
+        f4.Append(MENU_MATPLOT, "What do the toolbar buttons do?", "See documentation on the pan and zoom controls")
+        f4.Append(MENU_HELPDOC, "General help", "See general documentation about the app")
 
 
         menuBar.Append(f0, "&Options")
@@ -221,6 +227,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onShowKWH,         id=MENU_SHOWKWH)
         self.Bind(wx.EVT_MENU, self.onShowGBP,         id=MENU_SHOWGBP)
         self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
+        self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
+        self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
 
 
     def __init__(self, parent, id, title):
@@ -241,7 +249,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.9"
+        info.Version = "0.9.10"
         info.WebSite = ("http://getsatisfaction.com/dalelane/company_products", "getsatisfaction.com/dalelane")
         wx.AboutBox(info)
 
@@ -263,6 +271,11 @@ class MyFrame(wx.Frame):
     def onShowWebsite(self, event):
         webbrowser.open_new_tab('http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui')
 
+    def openMatplotlibUrl(self, event):
+        webbrowser.open_new_tab('http://matplotlib.sourceforge.net/users/navigation_toolbar.html')
+
+    def openHelpUrl(self, event):
+        webbrowser.open_new_tab('http://currentcost.appspot.com/static/welcome.html')
 
     #####################
     # 
@@ -283,7 +296,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.9":
+        elif latestversion != "0.9.10":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.",
                                        'CurrentCost', 
