@@ -79,10 +79,16 @@ class CurrentCostDB():
         else:
             return
 
-        self.connection.execute('INSERT INTO annotation(ts, timeoffset, graphid, annotation, ccvalue) values(?, ?, ?, ?, ?)',
-                                (timestamp, timeoffset, graphid, annotation, value))
+        cursor = self.connection.cursor()
+        cursor.execute('INSERT INTO annotation(ts, timeoffset, graphid, annotation, ccvalue) values(?, ?, ?, ?, ?)',
+                        (timestamp, timeoffset, graphid, annotation, value))
+        newrowid = cursor.lastrowid
         self.connection.commit()
+        return newrowid
 
+    def DeleteAnnotation(self, annotationid):
+        self.connection.execute('DELETE FROM annotation WHERE key="' + str(annotationid) + '"')
+        self.connection.commit()
 
     # retrieve a collection of all persisted annotations
     def RetrieveAnnotations(self, graphid):
@@ -100,7 +106,7 @@ class CurrentCostDB():
     def StoreSetting(self, key, value):
         self.connection.execute('INSERT OR REPLACE INTO settings(settingkey, settingvalue) values(?, ?)',
                                 (key, value))
-        self.connection.commit()        
+        self.connection.commit()
 
     # retrieve the value from a key-value pair in the database
     def RetrieveSetting(self, key):
