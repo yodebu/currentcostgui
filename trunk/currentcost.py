@@ -794,7 +794,22 @@ def onMouseClick(event):
         noteid = int(text.get_text())
         notetext = ccdb.RetrieveAnnotationText(noteid)
         if notetext:
-            print notetext
+            if event.mouseevent.button == 1:
+                print notetext
+            else:
+                confdlg = wx.MessageDialog(None,
+                                           'Do you want to delete the note: "' + notetext + '"?',
+                                           'CurrentCost', 
+                                          style=(wx.YES_NO | wx.NO_DEFAULT | wx.ICON_EXCLAMATION))
+                result = confdlg.ShowModal()        
+                confdlg.Destroy()
+                if result == wx.ID_YES:
+                    ccdb.DeleteAnnotation(noteid)
+                    confdlg = wx.MessageDialog(None, "Note will be removed when the app is restarted", "CurrentCost",
+                                               style=(wx.OK | wx.ICON_INFORMATION))
+                    confdlg.ShowModal()
+                    confdlg.Destroy()
+                
     elif isinstance(event.artist, Rectangle):
         clickedbar = event.artist
         atimestamp = clickedbar.get_x()
@@ -823,10 +838,10 @@ def onMouseClick(event):
         if dlg.ShowModal() == wx.ID_OK:
             newnote = dlg.GetValue()
 
-            ccdb.StoreAnnotation(clickeddatetime, fraction, clickedgraph, newnote, clickedkwh)
+            rowid = ccdb.StoreAnnotation(clickeddatetime, fraction, clickedgraph, newnote, clickedkwh)
 
             ccvis = CurrentCostVisualisations()
-            ccvis.AddNote(newnote, clickedaxes, clickeddatetime, fraction, clickedkwh, graphunits, clickedkwh, clickedgraph)        
+            ccvis.AddNote(rowid, clickedaxes, clickeddatetime, fraction, clickedkwh, graphunits, clickedkwh, clickedgraph)        
         dlg.Destroy()
 
 
