@@ -90,17 +90,17 @@ class CurrentCostDB():
         self.connection.execute('DELETE FROM annotation WHERE key="' + str(annotationid) + '"')
         self.connection.commit()
 
+
     # retrieve a collection of all persisted annotations
     def RetrieveAnnotations(self, graphid):
         return self.connection.execute('SELECT * FROM annotation WHERE graphid="' + str(graphid) + '"')
-    def RetrieveAnnotationText(self, annotationid):
+    def RetrieveAnnotation(self, annotationid):
         cursor = self.connection.cursor()
         cursor.execute('SELECT * FROM annotation WHERE key="' + str(annotationid) + '"')
         row = cursor.fetchone()
-        if row:
-            return row[4]
-        else:
-            return None
+        return row
+
+
 
     # store a key-value pair in the database
     def StoreSetting(self, key, value):
