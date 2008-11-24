@@ -85,6 +85,65 @@ class GoogleAppEngine():
 
         return True
 
+
+
+
+
+
+    #
+    # verifies that we are allowed to download updates from a specified user
+    # 
+    def VerifyPermissionsForUser(self, gui, ccdatabase, username):
+
+        # retrieve last-used-username from client local db - use to prefill 
+        #  the GUI that will request Google credentials
+        if not self.googleemail:
+            self.googleemail = ccdatabase.RetrieveSetting("googleemail")
+
+        # get username and password from user
+        if self.RequestGoogleCredentials(gui) == False:
+            return 
+
+        # persist the username - to save it needing to be entered next time
+        ccdatabase.StoreSetting("googleemail", self.googleemail)
+
+        # log on to Google App Engine - creating a cookie to use when we start
+        #  downloading data
+
+        try:
+            self.AuthenticateWebService(self.googleemail, self.googlepasswd)
+        except urllib2.URLError, err:
+                errdlg = wx.MessageDialog(gui,
+                                          "Failed to connect to CurrentCost server",
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_ERROR))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+                return 
+        except urllib2.HTTPError, err:
+            if err.code == 403:
+                errdlg = wx.MessageDialog(gui,
+                                          "Username / password not recognised",
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_ERROR))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+                return 
+            else:
+                print err.code
+
+        # check username with Google App Engine 
+        postreq_data = urllib.urlencode( { "username"  : username } )
+        post_req = urllib2.Request('http://currentcost.appspot.com/friends/verify', data=postreq_data)
+        post_resp = urllib2.urlopen(post_req)
+        post_resp_body = post_resp.read()
+
+        if post_resp_body == "OK":
+            return True
+
+        return False
+
+
     #
     # downloads group averages from Google App Engine
     # 

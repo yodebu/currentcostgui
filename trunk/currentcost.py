@@ -162,6 +162,7 @@ class MyFrame(wx.Frame):
         MENU_DNLOAD  = wx.NewId()
         MENU_ACCNT   = wx.NewId()
         MENU_PROFILE = wx.NewId()
+        MENU_COMPARE = wx.NewId()
         MENU_UPDATES = wx.NewId()
         MENU_BUGREPT = wx.NewId()
         MENU_MANUAL  = wx.NewId()
@@ -190,6 +191,8 @@ class MyFrame(wx.Frame):
         #f3.Append(MENU_UPLOAD,  "Upload data to web...", "Upload CurrentCost data to the web")
         #f3.Append(MENU_DNLOAD,  "Download data from web...", "Download CurrentCost data from your groups from the web")
         f3.Append(MENU_SYNC,  "Sync with web...", "Synchronise your CurrentCost data with the web to see how you compare with your groups")
+        #f3.AppendSeparator()
+        #f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
         f3.AppendSeparator()
         f3.Append(MENU_ACCNT,   "Create account...", "Create an account online to store and access CurrentCost data")
         f3.Append(MENU_PROFILE, "Manage profile...", "Manage online profile")
@@ -220,6 +223,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onUploadData,      id=MENU_UPLOAD)
         self.Bind(wx.EVT_MENU, self.onDownloadData,    id=MENU_DNLOAD)
         self.Bind(wx.EVT_MENU, self.onSyncData,        id=MENU_SYNC)
+        self.Bind(wx.EVT_MENU, self.onCompareUsers,    id=MENU_COMPARE)
         self.Bind(wx.EVT_MENU, self.onManageAcct,      id=MENU_ACCNT)
         self.Bind(wx.EVT_MENU, self.onManageAcct,      id=MENU_PROFILE)
         self.Bind(wx.EVT_MENU, self.onUpdatesCheck,    id=MENU_UPDATES)
@@ -249,7 +253,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.10"
+        info.Version = "0.9.11"
         info.WebSite = ("http://getsatisfaction.com/dalelane/company_products", "getsatisfaction.com/dalelane")
         wx.AboutBox(info)
 
@@ -296,7 +300,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.10":
+        elif latestversion != "0.9.11":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.",
                                        'CurrentCost', 
@@ -374,6 +378,53 @@ class MyFrame(wx.Frame):
             return
 
         return gae.UploadCurrentCostDataToGoogle(self, ccdb)
+
+
+    #
+    #  compare with specific users
+
+    def onCompareUsers(self, event):
+
+        global ccdb
+
+        userEntryDialog = wx.TextEntryDialog(self, 
+                                             'Enter up to four email addresses of friends to compare with\n (one address per line):',
+                                             'CurrentCost',
+                                             '',
+                                             wx.TE_MULTILINE | wx.OK | wx.CANCEL )
+        result = userEntryDialog.ShowModal()
+
+        users = userEntryDialog.GetValue().split('\n')
+        userEntryDialog.Destroy()
+
+        if result != wx.ID_OK:
+            return
+
+        gae = GoogleAppEngine()
+
+        verifiedusers = []
+
+        for user in users:
+            res = gae.VerifyPermissionsForUser(self, ccdb, user)
+            print res
+            if res == False:
+                errdlg = wx.MessageDialog(self,
+                                          user + ' has not confirmed that you are '
+                                          'allowed to see their CurrentCost data. '
+                                          '\n\n'
+                                          'Please ask them to visit '
+                                          'http://currentcost.appspot.com/friends '
+                                          'and add your email address.',
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_INFORMATION))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+            else:
+                verifiedusers.append(user)
+        
+        print verifiedusers
+
+
 
 
     #####################
@@ -729,17 +780,39 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 def connectToDatabase():
     global ccdb, axes1, axes2, axes3, axes4, axes5, trendspg
 
+    # what is the path to the database used to store CurrentCost data?
     dbLocation = ""
-    askForLocation = False
 
+    # should the application prompt the user to select the database file?
+    askForLocation = False
+    # should the application store the location of the database file?
+    storeLocation = False
+    # is this the first time this application has been run?
+    appFirstRun = False
+
+    # message to be displayed when prompting for file location
+    #  we tweak this message based on whether this is the first time the
+    #  application is being run
+    locMessage = "Identify file where CurrentCost data should be stored"
+
+    # location of the executable. we store a small settings file, called
+    #  currentcost.dat in this directory
+    # this file will give the path of the database file where data is stored
+    #  or 'prompt' if the user does not wants the path to be stored, and 
+    #  wants to be prompted for the location every time
     currentdir = sys.path[0]
 
     # special case : py2exe-compiled apps store the zip in a different place
     if os.path.basename(currentdir) == "library.zip":
         currentdir = os.path.join(currentdir, "..")
 
+    # location of the settings file
     settingsfile = os.path.join(currentdir, "currentcost.dat")
 
+    # check if the settings file exists
+    #  if not, then it is likely that this is the first time the application
+    #  is run. we display an appropriate message, and set the flags to make 
+    #  sure that some setup steps are run
     if os.path.isfile(settingsfile) == False:
         welcome = wx.MessageDialog(None,
                                    "It looks like this is the first time that you've used this application.\n\n"
@@ -751,12 +824,30 @@ def connectToDatabase():
         welcome.ShowModal()        
         welcome.Destroy()
         askForLocation = True
+        appFirstRun = True
     else:
+        # the settings file does exist - we read it now
         settingscontents = open(settingsfile, 'r')
         dbLocation = settingscontents.read()
         settingscontents.close()
-        if os.path.isfile(dbLocation) == False:
+
+        # read the contents of the settings file - this will contain the path 
+        #  of the database file where data is stored or 'prompt' if the user
+        #  does not wants the path to be stored, and wants to be prompted for
+        #  the location every time
+        dbLocation = dbLocation.strip()
+        if dbLocation == "prompt":
+            # settings indicate 'prompt' - so we set flags to make sure that 
+            #  the app prompts for the location of a database file
             askForLocation = True
+            locMessage = "Identify which CurrentCost data file you want to use"
+        elif os.path.isfile(dbLocation) == False:
+            # settings file gave a location of a database file, but no file
+            #  could be found at that location. so we display an error, and set
+            #  a flag so that a new location can be provided by the user
+            askForLocation = True
+            storeLocation = True
+            locMessage = "Identify the new location of the CurrentCost data file"
             errdlg = wx.MessageDialog(None,
                                       "The application failed to find the file used to store CurrentCost data.\n\n"
                                       "Please click 'OK', then help locate the file. \n\n"
@@ -768,13 +859,22 @@ def connectToDatabase():
 
 
     if askForLocation:
+        # for whatever reason, we need the user to provide the location of the 
+        #  application's database file 
         dialog = wx.FileDialog(None, 
                                style = wx.OPEN, 
-                               message="Identify file where CurrentCost data should be stored",
+                               message=locMessage,
                                wildcard="CurrentCost data files (*.ccd)|*.ccd")
+
         if dialog.ShowModal() == wx.ID_OK:
+            # new path provided
+            #  we don't check it, as the user is allowed to create new files
             dbLocation = dialog.GetPath()
+            dialog.Destroy()
         else:
+            # user clicked 'cancel'
+            #  there isn't much else we can do, so we display a 'goodbye' 
+            #  message and quit
             dialog.Destroy()
             byebye = wx.MessageDialog(None,
                                       "The application needs somewhere to store data. \n\n"
@@ -784,21 +884,56 @@ def connectToDatabase():
             byebye.ShowModal()        
             byebye.Destroy()
             return False
+
+
+    # if this is the first time the application is being run, we provide two 
+    #  options:
+    #  1) store the new location, so that in future it is used on startup
+    #  2) store 'prompt' as the new location, so the app will prompt for location
+    #        every time
+
+    if appFirstRun:
+        dialog = wx.MessageDialog(None,
+                                  "Do you want to use this file every time? \n\n"
+                                  "If you click Yes, you will not be prompted for the location again \n"
+                                  "If you click No, you will be prompted for the location every time the program starts",
+                                  "Should this be your only CurrentCost file?",
+                                  style=(wx.YES | wx.NO | wx.ICON_QUESTION))
+        if dialog.ShowModal() == wx.ID_YES:
+            storeLocation = True
+        else:
+            settingscontents = open(settingsfile, 'w')
+            settingscontents.write("prompt")
+            settingscontents.close()
+            
         dialog.Destroy()
 
 
-    progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)    
+    # we have all the information we need from the user
+    #  time to run the startup process
+
+    progdlg = wx.ProgressDialog ('CurrentCost', 
+                                 'Initialising CurrentCost data store', 
+                                 maximum = 11, 
+                                 style=wx.PD_CAN_ABORT)    
     ccdb.InitialiseDB(dbLocation)
 
-    settingscontents = open(settingsfile, 'w')
-    settingscontents.write(dbLocation)
-    settingscontents.close()
+    if storeLocation:
+        settingscontents = open(settingsfile, 'w')
+        settingscontents.write(dbLocation)
+        settingscontents.close()
 
     drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, progdlg, False)
     progdlg.Destroy()
     return True
 
 
+
+#
+# the user can add notes to the graph by clicking on bars
+# 
+# if the user click's on the note itself, the details of that note will be 
+#  displayed. (unfinished)
 def onMouseClick(event):
     global ccdb, graphunits
 
