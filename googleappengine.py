@@ -140,6 +140,8 @@ class GoogleAppEngine():
 
         if post_resp_body == "OK":
             return True
+        elif post_resp_body == "Unknown friend user":
+            return None
 
         return False
 
