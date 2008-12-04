@@ -33,6 +33,7 @@ import datetime
 import pylab
 import xml.parsers.expat
 import math
+import time
 import serial
 import datetime
 import webbrowser
@@ -135,7 +136,7 @@ plotter = None
 ccdb   = CurrentCostDB()
 
 # used to represent a CurrentCost update downloaded from the device
-newupd = CurrentCostUpdate ()
+newupd = CurrentCostUpdate()
 
 # stores the unit to be used in graphs
 graphunits = "kWh"
@@ -151,6 +152,7 @@ class MyFrame(wx.Frame):
 
         MENU_HELP    = wx.NewId()
         MENU_CONFIG  = wx.NewId()
+        MENU_MQTT    = wx.NewId()
         MENU_LOADDB  = wx.NewId()
         MENU_SHOWKWH = wx.NewId()
         MENU_SHOWGBP = wx.NewId()
@@ -172,7 +174,8 @@ class MyFrame(wx.Frame):
         menuBar = wx.MenuBar()
 
         f0 = wx.Menu()
-        f0.Append(MENU_CONFIG, "Connect...", "Connect to a CurrentCost meter")
+        f0.Append(MENU_CONFIG, "Connect directly...", "Connect to a CurrentCost meter")
+        f0.Append(MENU_MQTT,   "Connect via MQTT...", "Receive CurrentCost update from an MQTT-compatible message broker")
 
         f1 = wx.Menu()
         f1.Append(MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -185,14 +188,14 @@ class MyFrame(wx.Frame):
         f2.Append(MENU_EXPORT2, "Export days to CSV...", "Export stored daily CurrentCost data to a CSV spreadsheet file")
         f2.Append(MENU_EXPORT3, "Export months to CSV...", "Export stored monthly CurrentCost data to a CSV spreadsheet file")
         #f2.AppendSeparator()
-        #f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
+        f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
 
         f3 = wx.Menu()
         #f3.Append(MENU_UPLOAD,  "Upload data to web...", "Upload CurrentCost data to the web")
         #f3.Append(MENU_DNLOAD,  "Download data from web...", "Download CurrentCost data from your groups from the web")
         f3.Append(MENU_SYNC,  "Sync with web...", "Synchronise your CurrentCost data with the web to see how you compare with your groups")
-        #f3.AppendSeparator()
-        #f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
+        f3.AppendSeparator()
+        f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
         f3.AppendSeparator()
         f3.Append(MENU_ACCNT,   "Create account...", "Create an account online to store and access CurrentCost data")
         f3.Append(MENU_PROFILE, "Manage profile...", "Manage online profile")
@@ -217,6 +220,7 @@ class MyFrame(wx.Frame):
 
         self.Bind(wx.EVT_MENU, self.onAbout,           id=MENU_HELP)
         self.Bind(wx.EVT_MENU, self.onConnect,         id=MENU_CONFIG)
+        self.Bind(wx.EVT_MENU, self.onMQTTSubscribe,   id=MENU_MQTT)
         self.Bind(wx.EVT_MENU, self.onExportHours,     id=MENU_EXPORT1)
         self.Bind(wx.EVT_MENU, self.onExportDays,      id=MENU_EXPORT2)
         self.Bind(wx.EVT_MENU, self.onExportMonths,    id=MENU_EXPORT3)
@@ -253,7 +257,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.11"
+        info.Version = "0.9.12"
         info.WebSite = ("http://getsatisfaction.com/dalelane/company_products", "getsatisfaction.com/dalelane")
         wx.AboutBox(info)
 
@@ -300,12 +304,15 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.11":
+        elif latestversion != "0.9.12":
             confdlg = wx.MessageDialog(self,
-                                       "A newer version of this application (" + latestversion + ") is available.",
+                                       "A newer version of this application (" + latestversion + ") is available.\n\n"
+                                       "Download now?",
                                        'CurrentCost', 
-                                       style=(wx.OK | wx.ICON_EXCLAMATION))
-            result = confdlg.ShowModal()        
+                                       style=(wx.YES | wx.NO | wx.ICON_EXCLAMATION))
+            result = confdlg.ShowModal()
+            if result == wx.ID_YES:
+                webbrowser.open_new_tab('http://code.google.com/p/currentcostgui/')
             confdlg.Destroy()
         else:
             confdlg = wx.MessageDialog(self,
@@ -388,7 +395,7 @@ class MyFrame(wx.Frame):
         global ccdb
 
         userEntryDialog = wx.TextEntryDialog(self, 
-                                             'Enter up to four email addresses of friends to compare with\n (one address per line):',
+                                             'Enter up to four usernames of friends to compare with\n (one username per line):',
                                              'CurrentCost',
                                              '',
                                              wx.TE_MULTILINE | wx.OK | wx.CANCEL )
@@ -406,15 +413,21 @@ class MyFrame(wx.Frame):
 
         for user in users:
             res = gae.VerifyPermissionsForUser(self, ccdb, user)
-            print res
-            if res == False:
+            if res == None:
+                errdlg = wx.MessageDialog(self,
+                                          user + ' is not a recognised CurrentCost username. ',
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_ERROR))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+            elif res == False:
                 errdlg = wx.MessageDialog(self,
                                           user + ' has not confirmed that you are '
                                           'allowed to see their CurrentCost data. '
                                           '\n\n'
                                           'Please ask them to visit '
                                           'http://currentcost.appspot.com/friends '
-                                          'and add your email address.',
+                                          'and add your username.',
                                           'CurrentCost', 
                                           style=(wx.OK | wx.ICON_INFORMATION))
                 errdlg.ShowModal()        
@@ -422,8 +435,16 @@ class MyFrame(wx.Frame):
             else:
                 verifiedusers.append(user)
         
-        print verifiedusers
+        # verifiedusers is a list of usernames
+        #  we will ignore everything after the first four
 
+        maxrange = 4
+        if len(verifiedusers) < 4:
+            maxrange = len(verifiedusers)
+        for i in range(0, maxrange):
+            print verifiedusers[i]
+
+            
 
 
 
@@ -463,7 +484,7 @@ class MyFrame(wx.Frame):
 
 
     #
-    # connect to a CurrentCost meter
+    # connect to a CurrentCost meter directly
     #  
     #  if data is successfully retrieved, then redraw the graphs using the new
     #   data
@@ -485,6 +506,127 @@ class MyFrame(wx.Frame):
         dlg.Destroy()
 
 
+
+    #
+    # connect to a CurrentCost meter via MQTT
+    #  
+    #  if data is successfully retrieved, then redraw the graphs using the new
+    #   data
+    # 
+    def onMQTTSubscribe (self, event):
+        global ccdb, newupd, axes1, axes2, axes3, axes4, axes5, trendspg
+
+
+        if self.IsMQTTSupportAvailable():
+            # used to provide an MQTT connection to a remote CurrentCost meter
+            mqttClientModule = __import__("currentcostmqtt")
+            mqttClient = mqttClientModule.CurrentCostMQTTConnection()
+
+            #
+            # get information from the user required to establish the connection
+            #  prefill with setting from database if possible
+            #
+    
+            # IP address
+    
+            dlg = wx.TextEntryDialog(self, 
+                                     'Specify the IP address of a message broker to connect to:',
+                                     'CurrentCost')
+            lastipaddr = ccdb.RetrieveSetting("mqttipaddress")
+            if lastipaddr:
+                dlg.SetValue(lastipaddr)
+            else:
+                dlg.SetValue('204.146.213.96')
+            if dlg.ShowModal() != wx.ID_OK:
+                return False
+            ipaddr = dlg.GetValue()
+            if lastipaddr != ipaddr:
+                ccdb.StoreSetting("mqttipaddress", ipaddr)
+            dlg.Destroy()
+    
+            # topic string
+    
+            dlg = wx.TextEntryDialog(self, 
+                                     'Specify the topic string to subscribe to:',
+                                     'CurrentCost')
+            lasttopicstring = ccdb.RetrieveSetting("mqtttopicstring")
+            if lasttopicstring:
+                dlg.SetValue(lasttopicstring)
+            else:
+                dlg.SetValue('PowerMeter/history/YourUserNameHere')
+            if dlg.ShowModal() != wx.ID_OK:
+                return False
+            topicString = dlg.GetValue()
+            if lasttopicstring != topicString:
+                ccdb.StoreSetting("mqtttopicstring", topicString)
+            dlg.Destroy()
+
+
+            newupd = None
+            maxitems = 11
+            dialog = wx.ProgressDialog ('CurrentCost', 
+                                        'Connecting to message broker to receive published CurrentCost data', 
+                                        maximum = maxitems, 
+                                        style=wx.PD_CAN_ABORT)
+
+            if mqttClient.EstablishConnection(self, ccdb, dialog, maxitems, ipaddr, topicString) == True:
+                dialog.Update(6, "Subscribed to history feed. Waiting for data")
+
+                while newupd == None:
+                    time.sleep(1)
+                    dialog.Update(7, "Waiting for data")
+
+                dialog.Update(8, "Received data from message broker")
+
+                ccfuncs = CurrentCostDataFunctions()
+
+                dialog.Update(9, "Parsing data from message broker")
+                ccfuncs.ParseCurrentCostXML(ccdb, newupd)
+
+                dialog.Update(10, "Drawing graphs")
+                drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, False)
+
+                dialog.Update(maxitems, "Complete")
+
+            dialog.Destroy()
+        else:
+            dlg = wx.MessageDialog(self,
+                                   "Connecting via MQTT requires the use of a third-party module. "
+                                   "This module is not present.\n\n"
+                                   "Please copy the MQTT library to the directory where the CurrentCost app is stored then try this again",
+                                   'CurrentCost', 
+                                   style=(wx.OK | wx.ICON_EXCLAMATION))
+            dlg.ShowModal()        
+            dlg.Destroy()
+
+
+    def onMQTTSubscribeCallback (self, newccupdate):
+        global newupd
+        newupd = newccupdate
+
+
+    #
+    # MQTT support requires the use of a third-party Python module, which I 
+    #  am not able to re-distribute.
+    # 
+    # The user is required to obtain this module for themselves. This function
+    #  checks for the presence of this module.
+    # 
+    def IsMQTTSupportAvailable(self):
+        # location of the executable. we need a third-party MQTT module to 
+        #  provide the ability to subscribe to an MQTT topic, and we want to 
+        #  look for this in the same directory where the application is stored
+        currentdir = sys.path[0]
+    
+        # location of the MQTT module
+        pythonmodule = os.path.join(currentdir, "mqttClient.py")
+    
+        # check if the MQTT client Python module file exists
+        #  if not, then it is likely that we do not have MQTT support
+        return os.path.isfile(pythonmodule)
+
+
+
     #
     # manually enter XML for parsing - for test use only
     
@@ -495,7 +637,8 @@ class MyFrame(wx.Frame):
         dlg = wx.TextEntryDialog(self, 'Enter the XML:', 'CurrentCost')
         if dlg.ShowModal() == wx.ID_OK:
             line = dlg.GetValue()
-    
+        dlg.Destroy()
+
         try:
             p = xml.parsers.expat.ParserCreate()
             p.StartElementHandler = start_element
@@ -503,7 +646,7 @@ class MyFrame(wx.Frame):
             p.CharacterDataHandler = char_data
             p.Parse(line, 1)
         except xml.parsers.expat.ExpatError:
-            dialog.Update(1, 'Received invalid data')
+            print ('Received invalid data')
             return False
         #
         ccfuncs = CurrentCostDataFunctions()
@@ -658,12 +801,14 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
     monthDataCollection = ccdb.GetMonthDataCollection()
 
     if len(hourDataCollection) == 0:
-        dialog.Update(11, 'Data store initialised')
+        if dialog != None:
+            dialog.Update(11, 'Data store initialised')
         return
 
     ccvis = CurrentCostVisualisations()
 
-    dialog.Update(3, 'Charting hourly electricity usage...')
+    if dialog != None:
+        dialog.Update(3, 'Charting hourly electricity usage...')
     ccvis.PlotHourlyData(axes1, hourDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(1):
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -674,7 +819,8 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
                       graphunits, lastkwh,
                       "hours")        
 
-    dialog.Update(4, 'Charting daily electricity usage...')
+    if dialog != None:
+        dialog.Update(4, 'Charting daily electricity usage...')
     ccvis.PlotDailyData(axes2, dayDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(2):
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -685,7 +831,8 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
                       graphunits, lastkwh,
                       "days")        
 
-    dialog.Update(5, 'Charting monthly electricity usage...')
+    if dialog != None:
+        dialog.Update(5, 'Charting monthly electricity usage...')
     ccvis.PlotMonthlyData(axes3, monthDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(3):        
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -701,18 +848,22 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
     averageWeekData = ccdata.CalculateAverageWeek(dayDataCollection)
 
     if changeaxesonly == False:
-        dialog.Update(6, 'Identifying electricity usage trends...')
+        if dialog != None:
+            dialog.Update(6, 'Identifying electricity usage trends...')
         ccvis.IdentifyTrends(trendspg, hourDataCollection, dayDataCollection, monthDataCollection)
 
-    dialog.Update(7, 'Charting an average day...')
+    if dialog != None:
+        dialog.Update(7, 'Charting an average day...')
     if averageDayData:
         ccvis.PlotAverageDay(averageDayData, axes4, trendspg, graphunits, lastkwh)
 
-    dialog.Update(8, 'Charting an average week...')
+    if dialog != None:    
+        dialog.Update(8, 'Charting an average week...')
     if averageWeekData:
         ccvis.PlotAverageWeek(averageWeekData, axes5, trendspg, graphunits, lastkwh)
 
-    dialog.Update(9, 'Formatting charts...')
+    if dialog != None:
+        dialog.Update(9, 'Formatting charts...')
     #    
     daysl = DayLocator() 
     hoursl = HourLocator(range(12,24,12)) 
@@ -748,7 +899,8 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
     axes5.xaxis.set_major_locator(DayLocator(range(0,8,1)))
     axes5.xaxis.set_major_formatter(DateFormatter('%a'))
     #
-    dialog.Update(10, 'Complete. Redrawing...')
+    if dialog != None:
+        dialog.Update(10, 'Complete. Redrawing...')
     #
     try:
         axes1.figure.canvas.draw()
@@ -770,7 +922,8 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
         axes5.figure.canvas.draw()
     except:
         plotter.deletepage('average week')
-    dialog.Update(11, 'Complete')
+    if dialog != None:
+        dialog.Update(11, 'Complete')
 
 
 #
