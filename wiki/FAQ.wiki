@@ -1,6 +1,6 @@
 #summary Frequently asked questions
 #labels Featured
-
+----
 == "The application connects to the CurrentCost meter then seems to wait for data forever" ==
 Are you sure you have a second generation CurrentCost monitor?
 
@@ -21,13 +21,39 @@ The downside is that to build a useful history store, you have to have a compute
 You can use a very low-powered server (I [http://dalelane.co.uk/blog/?p=267 use a Slug for this purpose]).
 
 As the newer CurrentCost meters store limited history data on the device themselves, I wrote this Python app to use this - for people who didn’t want the overhead of having a server running all the time!
-
+----
 == "Will this app work with the new CC28 meters?" ==
 At the moment, no. Sorry. It will do soon though, I hope.
-
+----
 == "Which Windows COM port should I connect to?" ==
 This depends on the software driver you are using to connect your CurrentCost meter to your computer. If you use the Prolific driver linked to on the [http://code.google.com/p/currentcostgui/wiki/Prerequisites Prerequisites page] then the COM port for your cable is specified in Device Manager:
 
 http://currentcostgui.googlecode.com/files/devicemanager.png
 
 The [http://code.google.com/p/currentcostgui/wiki/Prerequisites prereqs page] includes more info on config for the serial driver.
+----
+== "What's the 'Sync with web' thing about?" ==
+Please see the [CompareYourData detailed doc about this feature]
+----
+== "When I try to run the compiled Windows exe version, it crashes on startup with an exception in 'ModName: numpy.core._dotblas.pyd'"
+The CurrentCost app is actually a Python script. The "proper" (or at least reliable) way to run it is to run the actual Python script source with [http://www.python.org/download/ a Python interpreter]. 
+
+Because I know that a lot of people wont have Python, and will be reluctant or unable to install it just for this app. So I also make available a version packaged using [http://www.py2exe.org/ py2exe]. 
+
+Check out the py2exe website if you want to know what this is all about, but in short, it bundles together a Python interpreter with the script and any required third party modules. So you get the whole lot in one self-contained (and huge!) bundle. 
+
+Nice in theory, but in practice, py2exe has issues. And one of them is that it doesn't seem to play nicely with numpy (one of the third party Python modules used in my app) on some computers. 
+
+Three people have reported this problem - but after repeated attempts to resolve it, I've not been able to come up with an answer. 
+
+My issue is that the crash doesn't happen in my code - it happens when Windows tries to initialise the numpy module when starting the built-in Python interpreter that py2exe has bundled. So there isn't anything I can change in my code that will effect this. And my efforts to make changes to the py2exe building, haven't made any difference. 
+
+All this is a long-winded way of saying that you have a few options:
+
+a) Install Python and run the script manually
+
+b) Run the py2exe-built version on another computer (most WinXP computers seem to be okay with it... I have no idea what is different for the few that seem to crash with it)
+
+c) Download my script, and py2exe. And build it into an executable yourself. Then tell me how you did it so I can fix my version ;-)
+
+Sorry I don't have any more helpful answers - I've put a lot of time into investigating this before, and am completely stumped.
