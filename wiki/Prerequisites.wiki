@@ -2,11 +2,11 @@
 #labels Phase-Deploy,Featured
 
 = Python =
+   Note: This only applies if you download the Python source. If you download the compiled Windows executable, you wont need to get Python separately, or any of the third-party Python modules listed here.
 
 The biggest prerequisite is Python, as this is a Python application. I use Python 2.5, but you can probably use newer versions.
 
 The app also uses a number of third-party Python modules:
-
   * matplotlib  :: http://matplotlib.sourceforge.net/users/installing.html
   * numpy :: http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=175103
   * pyserial :: http://pyserial.wiki.sourceforge.net/pySerial
@@ -18,12 +18,15 @@ The app also uses a number of third-party Python modules:
 Most of these can be installed using easy install
 
 E.g. 
+{{{
 easy_install wxpython
+}}}
 
 Which saves having to manually download and install each of the prereqs. 
-
+----
 = Serial drivers =
 
 If you are using Windows, you will need software drivers for the cable you use to connect your CurrentCost meter to your computer. I use Prolific drivers that I downloaded from [http://www.prolific.com.tw/eng/downloads.asp?ID=31] and configured them like this:
 
 http://currentcostgui.googlecode.com/files/prolificsettings.png
+---
