@@ -1,7 +1,7 @@
 #summary Frequently asked questions
 #labels Featured
 
-== The application connects to the CurrentCost meter then seems to wait for data forever ==
+== "The application connects to the CurrentCost meter then seems to wait for data forever" ==
 Are you sure you have a second generation CurrentCost monitor?
 
 This application was written to display the historical electricity usage data collected by second-generation CurrentCost meters.
