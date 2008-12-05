@@ -24,4 +24,6 @@ Which saves having to manually download and install each of the prereqs.
 
 = Serial drivers =
 
-If you are using Windows, you will need software drivers for the cable you use to connect your CurrentCost meter to your computer. I use Prolific drivers that I downloaded from [http://www.prolific.com.tw/eng/downloads.asp?ID=31]
+If you are using Windows, you will need software drivers for the cable you use to connect your CurrentCost meter to your computer. I use Prolific drivers that I downloaded from [http://www.prolific.com.tw/eng/downloads.asp?ID=31] and configured them like this:
+
+http://currentcostgui.googlecode.com/files/prolificsettings.png
