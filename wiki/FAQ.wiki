@@ -1,0 +1,26 @@
+#summary Frequently asked questions
+#labels Featured
+
+== The application connects to the CurrentCost meter then seems to wait for data forever ==
+Are you sure you have a second generation CurrentCost monitor?
+
+This application was written to display the historical electricity usage data collected by second-generation CurrentCost meters.
+
+First generation CurrentCost meters do not store (and therefore cannot output) history data.
+
+So the application may be waiting for history data which your meter will never send.
+
+If this is the case, then this application will not work with your meter.
+
+Unfortunately, I have not had access to a first generation meter to be able to program the application to automatically recognise when it is connected to one. So if you want to confirm it, you need to get access to the data your meter is producing yourself. You can do this using [http://code.google.com/p/currentcost/ freely available code], or using a serial port monitor such as Hyperterminal.
+
+Note that the older meters do still output the current reading, so your alternative would be to store this. If you store every reading, every 6 seconds, you can build up a history data source of your own. Several of us have done this - [http://dalelane.co.uk/blog/?p=272 I've blogged about doing this with MySQL myself, using Perl to query the MySQL store]. You can do some quite powerful queries this way.
+
+The downside is that to build a useful history store, you have to have a computer connected to the CurrentCost meter all the time. Which can potentially negate any benefits of monitoring your electricity usage!
+
+You can use a very low-powered server (I [http://dalelane.co.uk/blog/?p=267 use a Slug for this purpose]).
+
+As the newer CurrentCost meters store limited history data on the device themselves, I wrote this Python app to use this - for people who didn’t want the overhead of having a server running all the time!
+
+== Will this app work with the new CC28 meters? ==
+At the moment, no. Sorry. It will do soon though, I hope.
