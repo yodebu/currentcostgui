@@ -1,5 +1,5 @@
 #summary How to compare your data with other people's
-#labels Featured,Phase-Design
+#labels Phase-Design
 
 = Introduction =
  Note - this is an optional feature, and is not required to use any of the other features of the application.
