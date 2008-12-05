@@ -22,5 +22,12 @@ You can use a very low-powered server (I [http://dalelane.co.uk/blog/?p=267 use 
 
 As the newer CurrentCost meters store limited history data on the device themselves, I wrote this Python app to use this - for people who didn’t want the overhead of having a server running all the time!
 
-== Will this app work with the new CC28 meters? ==
+== "Will this app work with the new CC28 meters?" ==
 At the moment, no. Sorry. It will do soon though, I hope.
+
+== "Which Windows COM port should I connect to?" ==
+This depends on the software driver you are using to connect your CurrentCost meter to your computer. If you use the Prolific driver linked to on the [http://code.google.com/p/currentcostgui/wiki/Prerequisites Prerequisites page] then the COM port for your cable is specified in Device Manager:
+
+http://currentcostgui.googlecode.com/files/devicemanager.png
+
+The [http://code.google.com/p/currentcostgui/wiki/Prerequisites prereqs page] includes more info on config for the serial driver.
