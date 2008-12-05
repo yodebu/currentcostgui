@@ -188,15 +188,15 @@ class MyFrame(wx.Frame):
         f2.Append(MENU_EXPORT2, "Export days to CSV...", "Export stored daily CurrentCost data to a CSV spreadsheet file")
         f2.Append(MENU_EXPORT3, "Export months to CSV...", "Export stored monthly CurrentCost data to a CSV spreadsheet file")
         #f2.AppendSeparator()
-        f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
+        #f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
 
         f3 = wx.Menu()
         #f3.Append(MENU_UPLOAD,  "Upload data to web...", "Upload CurrentCost data to the web")
         #f3.Append(MENU_DNLOAD,  "Download data from web...", "Download CurrentCost data from your groups from the web")
         f3.Append(MENU_SYNC,  "Sync with web...", "Synchronise your CurrentCost data with the web to see how you compare with your groups")
         f3.AppendSeparator()
-        f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
-        f3.AppendSeparator()
+        #f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
+        #f3.AppendSeparator()
         f3.Append(MENU_ACCNT,   "Create account...", "Create an account online to store and access CurrentCost data")
         f3.Append(MENU_PROFILE, "Manage profile...", "Manage online profile")
 
@@ -258,7 +258,7 @@ class MyFrame(wx.Frame):
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
         info.Version = "0.9.12"
-        info.WebSite = ("http://getsatisfaction.com/dalelane/company_products", "getsatisfaction.com/dalelane")
+        info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
     # helper function to update the status bar
@@ -277,13 +277,13 @@ class MyFrame(wx.Frame):
         webbrowser.open_new_tab('http://currentcost.appspot.com/profile')
 
     def onShowWebsite(self, event):
-        webbrowser.open_new_tab('http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui')
+        webbrowser.open_new_tab('http://code.google.com/p/currentcostgui/')
 
     def openMatplotlibUrl(self, event):
         webbrowser.open_new_tab('http://matplotlib.sourceforge.net/users/navigation_toolbar.html')
 
     def openHelpUrl(self, event):
-        webbrowser.open_new_tab('http://currentcost.appspot.com/static/welcome.html')
+        webbrowser.open_new_tab('http://code.google.com/p/currentcostgui/')
 
     #####################
     # 
