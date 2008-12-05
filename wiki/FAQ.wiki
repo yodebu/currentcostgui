@@ -35,7 +35,7 @@ The [http://code.google.com/p/currentcostgui/wiki/Prerequisites prereqs page] in
 == "What's the 'Sync with web' thing about?" ==
 Please see the [CompareYourData detailed doc about this feature]
 ----
-== "When I try to run the compiled Windows exe version, it crashes on startup with an exception in 'ModName: numpy.core._dotblas.pyd'"
+== "When I try to run the compiled Windows exe version, it crashes on startup with an exception in 'ModName: numpy.core._dotblas.pyd'" ==
 The CurrentCost app is actually a Python script. The "proper" (or at least reliable) way to run it is to run the actual Python script source with [http://www.python.org/download/ a Python interpreter]. 
 
 Because I know that a lot of people wont have Python, and will be reluctant or unable to install it just for this app. So I also make available a version packaged using [http://www.py2exe.org/ py2exe]. 
@@ -57,3 +57,4 @@ b) Run the py2exe-built version on another computer (most WinXP computers seem t
 c) Download my script, and py2exe. And build it into an executable yourself. Then tell me how you did it so I can fix my version ;-)
 
 Sorry I don't have any more helpful answers - I've put a lot of time into investigating this before, and am completely stumped.
+----
