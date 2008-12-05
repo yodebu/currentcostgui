@@ -1,0 +1,23 @@
+#summary An outline of the main features of the CurrentCost gui
+#labels Featured
+
+= Features =
+
+The CurrentCost Python gui is still very much a work-in-progress - a place to try out ideas on how to do graphing of CurrentCost data.
+
+At time of writing, it has the following features.
+
+<br>
+
+|| *Graphs!* || http://currentcostgui.googlecode.com/files/ccgui_graphs.png || It's what the app was written to do - CurrentCost data is represented with a variety of bar graphs ||
+|| *Storing your data* || http://currentcostgui.googlecode.com/files/ccgui_db.png || CurrentCost meters only store a limited amount of history data. The application will store all of the data you ever give it, and will combine it with the latest data received the next time you connect it to a CurrentCost meter. <br><br>All of the data is saved to a file on your computer. ||
+|| *Connect via serial connection* || http://currentcostgui.googlecode.com/files/ccgui_serial.png || Have a serial cable to connect your CurrentCost meter to your computer or laptop? The application can make a direct serial connection, and receive and parse the data. <br><br><br> _Hint:_ Options -> Connect directly... ||
+|| *Connect via MQTT* || http://currentcostgui.googlecode.com/files/ccgui_mqtt.png || Is your CurrentCost meter connected to a [http://www.alphaworks.ibm.com/tech/rsmb Really Small Message Broker]? You don't need to disconnect it to be able to use the GUI - the application can subscribe to your message broker and receive the data remotely via [MQTT] <br><br><br> _Hint:_ Options -> Connect via MQTT... ||
+|| *Tabbed interface* || http://currentcostgui.googlecode.com/files/ccgui_tabs.png || One graph not enough for you? Rather than try and fit multiple graphs on a single screen, the application uses a tabbed interface to display a variety of graph types - and you can let any of them fill the screen ||
+|| *Identifying trends* || http://currentcostgui.googlecode.com/files/ccgui_trends.png || Graphs not enough? The application also identifies a few trends for you on the 'trends' tab ||
+|| *Display graphs in kWH or £* || http://currentcostgui.googlecode.com/files/ccgui_gbp.png || Enter the cost of a kWH to see graphs displayed in the cost of electricity. <br><br>The simplest way to work out your personal cost is to find a recent electricity bill, and divide how much you paid by the number of units you used. This will give you a cost per kWH that includes any fixed charge, and averages out any variable pricing.<br><br>Or just go for something like 11p<br><br><br> _Hint:_ Data -> Display GBP||
+|| *Pan and zoom* || http://currentcostgui.googlecode.com/files/ccgui_dynamic.png || Graphs produced by the application are dynamic - you can drag to pan around your history, zoom out to see the big picture, or zoom in to focus on a particular period of interest. <br><br>And the Back / Forward / Home buttons let you go back through the history of your moving around the graph.<br><br><br> _Hint:_ See the detailed doc on [http://matplotlib.sourceforge.net/users/navigation_toolbar.html Interactive navigation] ||
+|| *Save graphs as images* || http://currentcostgui.googlecode.com/files/ccgui_save.png || Want to share a graph with a friend? Graphs can be exported to image files.<br><br><br> _Hint:_ Click on the little disk icon in the toolbar ||
+|| *Export to CSV* || http://currentcostgui.googlecode.com/files/ccgui_export.png || Want to do something different with the data? You can export all of the data stored to CSV files, for use in other programs like MS Excel or OpenOffice.<br><br><br> _Hint:_ Export -> Export ??? to CSV... ||
+|| *Support for multiple CurrentCost meters* || http://currentcostgui.googlecode.com/files/ccgui_share.png || As mentioned above, your history data is stored in a local file. <br><br>If you don't want to have to locate this file every time you run the application, you can tell it to always open the same history file to add to.<br><br>But if you have more than one CurrentCost meter, you can tell the application to let you choose which history file you are going to add to. <br><br><br> _Hint:_ This preference is set at startup. Delete the currentcost.dat file if you want to change the setting. ||
+|| *Calculating averages* || http://currentcostgui.googlecode.com/files/ccgui_averages.png || As well as showing the history data as it is received, it is also turned into a variety of averages - for example, see your power usage in an average day, or see what your average week looks like. ||
