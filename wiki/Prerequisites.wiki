@@ -1,6 +1,6 @@
 #summary Prerequisites for running the app
 #labels Phase-Deploy,Featured
-
+----
 = Python =
    Note: This only applies if you download the Python source. If you download the compiled Windows executable, you wont need to get Python separately, or any of the third-party Python modules listed here.
 
