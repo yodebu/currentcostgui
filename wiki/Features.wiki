@@ -1,8 +1,6 @@
 #summary An outline of the main features of the CurrentCost gui
 #labels Featured
 
-= Features =
-
 The CurrentCost Python gui is still very much a work-in-progress - a place to try out ideas on how to do graphing of CurrentCost data.
 
 At time of writing, it has the following features.
