@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*- 
+
 #
 # CurrentCost GUI
 # 
@@ -19,6 +21,7 @@
 #  The author of this code can be contacted at Dale.Lane@gmail.com
 #    Any contact about this application is warmly welcomed.
 #
+
 import os
 import sys
 import urllib
@@ -121,15 +124,13 @@ from matplotlib.text import Text
 # 
 
 #
-# these are the different graphs that we draw on
-trendspg = None    # trends
-axes1 = None       # hours
-axes2 = None       # days   
-axes3 = None       # months
-axes4 = None       # average day
-axes5 = None       # average week
+# the overall gui
+frame = None
 
-# the GUI that we add tabs to
+# target lines drawn on the different graphs
+targetlines = {}
+
+# the interface that we add tabs to
 plotter = None
 
 # connection to the database used to store CurrentCost data
@@ -144,18 +145,31 @@ graphunits = "kWh"
 
 class MyFrame(wx.Frame):
     f1 = None
+    mnuTarget = None
     MENU_SHOWKWH = None
     MENU_SHOWGBP = None
+    MENU_TARGET  = None
+
+    #
+    # these are the different graphs that we draw on
+    trendspg = None    # trends
+    axes1 = None       # hours
+    axes2 = None       # days   
+    axes3 = None       # months
+    axes4 = None       # average day
+    axes5 = None       # average week
+
 
     def Build_Menus(self):
-        global f1, MENU_SHOWKWH, MENU_SHOWGBP
+        global ccdb
 
         MENU_HELP    = wx.NewId()
         MENU_CONFIG  = wx.NewId()
         MENU_MQTT    = wx.NewId()
         MENU_LOADDB  = wx.NewId()
-        MENU_SHOWKWH = wx.NewId()
-        MENU_SHOWGBP = wx.NewId()
+        self.MENU_SHOWKWH = wx.NewId()
+        self.MENU_SHOWGBP = wx.NewId()
+        self.MENU_TARGET  = wx.NewId()
         MENU_EXPORT1 = wx.NewId()
         MENU_EXPORT2 = wx.NewId()
         MENU_EXPORT3 = wx.NewId()
@@ -177,11 +191,14 @@ class MyFrame(wx.Frame):
         f0.Append(MENU_CONFIG, "Connect directly...", "Connect to a CurrentCost meter")
         f0.Append(MENU_MQTT,   "Connect via MQTT...", "Receive CurrentCost update from an MQTT-compatible message broker")
 
-        f1 = wx.Menu()
-        f1.Append(MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
-        f1.Append(MENU_SHOWGBP, "Display GBP", "Show GBP on CurrentCost graphs", kind=wx.ITEM_CHECK)
-        f1.Check(MENU_SHOWKWH, True)
-        f1.Check(MENU_SHOWGBP, False)
+        self.f1 = wx.Menu()
+        self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
+        self.f1.Append(self.MENU_SHOWGBP, "Display GBP", "Show GBP on CurrentCost graphs", kind=wx.ITEM_CHECK)
+        self.f1.Check(self.MENU_SHOWKWH, True)
+        self.f1.Check(self.MENU_SHOWGBP, False)
+        self.f1.AppendSeparator()
+        self.mnuTarget = self.f1.Append(self.MENU_TARGET,  "Set personal target", "Set a usage target", kind=wx.ITEM_CHECK)
+        self.f1.Check(self.MENU_TARGET, False)
 
         f2 = wx.Menu()
         f2.Append(MENU_EXPORT1, "Export hours to CSV...", "Export stored two-hourly CurrentCost data to a CSV spreadsheet file")
@@ -211,7 +228,7 @@ class MyFrame(wx.Frame):
 
 
         menuBar.Append(f0, "&Options")
-        menuBar.Append(f1, "&Data")
+        menuBar.Append(self.f1, "&Data")
         menuBar.Append(f2, "&Export")
         menuBar.Append(f3, "&Web")
         menuBar.Append(f4, "&Help")
@@ -232,8 +249,9 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onManageAcct,      id=MENU_PROFILE)
         self.Bind(wx.EVT_MENU, self.onUpdatesCheck,    id=MENU_UPDATES)
         self.Bind(wx.EVT_MENU, self.onShowWebsite,     id=MENU_BUGREPT)
-        self.Bind(wx.EVT_MENU, self.onShowKWH,         id=MENU_SHOWKWH)
-        self.Bind(wx.EVT_MENU, self.onShowGBP,         id=MENU_SHOWGBP)
+        self.Bind(wx.EVT_MENU, self.onShowKWH,         id=self.MENU_SHOWKWH)
+        self.Bind(wx.EVT_MENU, self.onShowGBP,         id=self.MENU_SHOWGBP)
+        self.Bind(wx.EVT_MENU, self.onSetUsageTarget,  id=self.MENU_TARGET)
         self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
         self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
         self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
@@ -257,7 +275,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.12"
+        info.Version = "0.9.13"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -285,6 +303,7 @@ class MyFrame(wx.Frame):
     def openHelpUrl(self, event):
         webbrowser.open_new_tab('http://code.google.com/p/currentcostgui/')
 
+
     #####################
     # 
     # web services functions - connect to Google App Engine
@@ -304,7 +323,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.12":
+        elif latestversion != "0.9.13":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -490,7 +509,7 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onConnect (self, event):
-        global axes1, axes2, axes3, axes4, axes5, trendspg, ccdb
+        global ccdb
         dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
         lastcom = ccdb.RetrieveSetting("comport")
         if lastcom:
@@ -501,7 +520,7 @@ class MyFrame(wx.Frame):
                 ccdb.StoreSetting("comport", newcom)
             dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to CurrentCost meter', maximum = 11, style=wx.PD_CAN_ABORT)
             if getDataFromCurrentCostMeter(dlg.GetValue(), dialog) == True:
-                drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, False)
+                drawMyGraphs(self, dialog, False)
             dialog.Destroy()
         dlg.Destroy()
 
@@ -514,8 +533,7 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onMQTTSubscribe (self, event):
-        global ccdb, newupd, axes1, axes2, axes3, axes4, axes5, trendspg
-
+        global ccdb, newupd
 
         if self.IsMQTTSupportAvailable():
             # used to provide an MQTT connection to a remote CurrentCost meter
@@ -584,7 +602,7 @@ class MyFrame(wx.Frame):
                 ccfuncs.ParseCurrentCostXML(ccdb, newupd)
 
                 dialog.Update(10, "Drawing graphs")
-                drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, False)
+                drawMyGraphs(self, dialog, False)
 
                 dialog.Update(maxitems, "Complete")
 
@@ -630,7 +648,7 @@ class MyFrame(wx.Frame):
     #
     # manually enter XML for parsing - for test use only
     
-    def getDataFromXML(self, event):        
+    def getDataFromXML(self, event):
         global newupd, ccdb
         # 
         line = ""
@@ -656,30 +674,24 @@ class MyFrame(wx.Frame):
 
 
     #
-    # redraw the graphs to use kWh as a unit in the graph
-    #
-    def onShowKWH (self, event):
-        global f1, MENU_SHOWKWH, MENU_SHOWGBP, graphunits, axes1, axes2, axes3, axes4, axes5, trendspg
-
-        # update the GUI to show what the user has selected
-        f1.Check(MENU_SHOWKWH, True)
-        f1.Check(MENU_SHOWGBP, False)
-        graphunits = "kWh"
-
-        # redraw the graphs
-        progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)
-        drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, progdlg, True)
-        progdlg.Destroy()
-
-    #
-    # redraw the graphs to use financial cost as the units in the graph
+    # prompt the user for a 'cost per kwh' value
     # 
-    def onShowGBP (self, event):
-        global f1, MENU_SHOWKWH, MENU_SHOWGBP, ccdb, graphunits, axes1, axes2, axes3, axes4, axes5, trendspg
-        #
-        dlg = wx.TextEntryDialog(self, 'Cost of electricity (in GBP per kWh):','CurrentCost')
+    #  if promptEvenIfStored is false, we return the value stored in settings db
+    #   immediately if we have it.
+    # 
+    #  if promptEvenIfStored is true, or we have no value stored, then we prompt
+    #   the user to give a value
+    # 
+    def getKWHCost(self, promptEvenIfStored):
         # retrieve the last-used setting
         lastkwh = ccdb.RetrieveSetting("kwhcost")
+
+        if lastkwh and promptEvenIfStored == False:
+            return lastkwh
+
+        newkwh = None
+
+        dlg = wx.TextEntryDialog(self, 'Cost of electricity (in £ per kWh):','CurrentCost')
         if lastkwh:
             dlg.SetValue(lastkwh)
         if dlg.ShowModal() == wx.ID_OK:
@@ -696,19 +708,184 @@ class MyFrame(wx.Frame):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()        
                 errdlg.Destroy()
-                f1.Check(MENU_SHOWKWH, True)
-                f1.Check(MENU_SHOWGBP, False)
                   
             if test != None:
-                if lastkwh != newkwh:
-                    ccdb.StoreSetting("kwhcost", newkwh)
-                graphunits = "GBP"
-                f1.Check(MENU_SHOWKWH, False)
-                f1.Check(MENU_SHOWGBP, True)
-                progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)    
-                drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, progdlg, True)
-                progdlg.Destroy()
+                newkwh = test
+                ccdb.StoreSetting("kwhcost", newkwh)
+
         dlg.Destroy()
+        return newkwh
+
+
+    #
+    # set a target for electricity usage
+    # 
+    def onSetUsageTarget(self, event):
+        global ccdb
+
+        # retrieve existing preference for whether targets should be shown
+        #  and invert
+        enableTarget = ccdb.RetrieveSetting("enabletarget")
+        if enableTarget == '0':
+            # currently false - set to True
+            successful = self.enableUsageTarget()
+            if successful == True:
+                enableTarget = True
+                ccdb.StoreSetting("enabletarget", 1) 
+            else:
+                enableTarget = False
+        else:
+            # currently true - set to False
+            enableTarget = False
+            ccdb.StoreSetting("enabletarget", 0)
+            self.disableUsageTarget()
+        
+        self.f1.Check(self.MENU_TARGET, enableTarget)
+
+    def disableUsageTarget(self):
+        global targetlines
+        ccvis = CurrentCostVisualisations()
+        try:
+            ccvis.DeleteTargetLine(targetlines[self.axes1], self.axes1)
+        except:
+            # noop
+            i = 0
+        try:
+            ccvis.DeleteTargetLine(targetlines[self.axes2], self.axes2)
+        except:
+            # noop
+            i = 0
+        try:
+            ccvis.DeleteTargetLine(targetlines[self.axes3], self.axes3)
+        except:
+            # noop
+            i = 0
+        try:
+            ccvis.DeleteTargetLine(targetlines[self.axes4], self.axes4)
+        except:
+            # noop
+            i = 0
+        try:
+            ccvis.DeleteTargetLine(targetlines[self.axes5], self.axes5)
+        except:
+            # noop
+            i = 0
+
+    def enableUsageTarget(self):
+        dlg = wx.TextEntryDialog(self, 'How much do you want to spend a year on electricity? (£)','CurrentCost')
+        # retrieve the last-used setting
+        annualtarget = ccdb.RetrieveSetting("annualtarget")
+        if annualtarget:
+            dlg.SetValue(annualtarget)
+        if dlg.ShowModal() == wx.ID_OK:
+            newannualtarget = dlg.GetValue()
+            annualtargetfloat = None
+            try:
+                # check that we have been given a value that can be turned
+                #  into a number
+                annualtargetfloat = float(newannualtarget)
+            except:
+                errdlg = wx.MessageDialog(None,
+                                          'Not a number',
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_EXCLAMATION))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+                dlg.Destroy()
+                return False
+
+            if annualtargetfloat != None:
+                if annualtarget != newannualtarget:
+                    ccdb.StoreSetting("annualtarget", annualtargetfloat)
+
+                # we now have a total spend. do we know how much a kwh costs?
+                kwhcost = self.getKWHCost(False)
+
+                if kwhcost:
+                    self.displayUsageTarget()
+                    dlg.Destroy()
+                    return True
+                        
+        dlg.Destroy()
+        return False
+
+
+    def displayUsageTarget(self):
+        annualtarget = ccdb.RetrieveSetting("annualtarget")
+        annualtargetfloat = float(annualtarget)
+        kwhcost = self.getKWHCost(False)
+
+        # recap:
+        # annualtargetfloat - £ to spend in a year
+        # kwhcost           - £ per kwh
+        # 
+        annualkwh  = annualtargetfloat / float(kwhcost)
+        monthlykwh = annualkwh / 12
+        dailykwh   = annualkwh / 365
+        hourlykwh  = annualkwh / 8760
+
+        global targetlines
+        ccvis = CurrentCostVisualisations()
+
+        try:
+            targetlines[self.axes1] = ccvis.DrawTargetLine(hourlykwh, self.axes1)
+        except:
+            # noop
+            i = 0
+        try:
+            targetlines[self.axes2] = ccvis.DrawTargetLine(dailykwh, self.axes2)
+        except:
+            # noop
+            i = 0
+        try:
+            targetlines[self.axes3] = ccvis.DrawTargetLine(monthlykwh, self.axes3)
+        except:
+            # noop
+            i = 0    
+        try:
+            targetlines[self.axes4] = ccvis.DrawTargetLine(hourlykwh, self.axes4)
+        except:
+            # noop
+            i = 0    
+        try:
+            targetlines[self.axes5] = ccvis.DrawTargetLine(dailykwh, self.axes5)
+        except:
+            # noop
+            i = 0    
+
+    #
+    # redraw the graphs to use kWh as a unit in the graph
+    #
+    def onShowKWH (self, event):
+        global graphunits
+
+        # update the GUI to show what the user has selected
+        self.f1.Check(self.MENU_SHOWKWH, True)
+        self.f1.Check(self.MENU_SHOWGBP, False)
+        graphunits = "kWh"
+
+        # redraw the graphs
+        progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)
+        drawMyGraphs(self, progdlg, True)
+        progdlg.Destroy()
+
+    #
+    # redraw the graphs to use financial cost as the units in the graph
+    # 
+    def onShowGBP (self, event):
+        global ccdb, graphunits
+        #
+        if self.getKWHCost(True):
+            graphunits = "£"
+            self.f1.Check(self.MENU_SHOWKWH, False)
+            self.f1.Check(self.MENU_SHOWGBP, True)
+            progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)    
+            drawMyGraphs(self, progdlg, True)
+            progdlg.Destroy()
+        else:
+            self.f1.Check(self.MENU_SHOWKWH, True)
+            self.f1.Check(self.MENU_SHOWGBP, False)
+
 
 
 #####################################
@@ -791,7 +968,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 #
 # redraw graphs on each of the tabs
 # 
-def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxesonly):
+def drawMyGraphs(guihandle, dialog, changeaxesonly):
     global ccdb, graphunits
 
     lastkwh = ccdb.RetrieveSetting("kwhcost")
@@ -809,10 +986,10 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 
     if dialog != None:
         dialog.Update(3, 'Charting hourly electricity usage...')
-    ccvis.PlotHourlyData(axes1, hourDataCollection, graphunits, lastkwh)
+    ccvis.PlotHourlyData(guihandle.axes1, hourDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(1):
         ccvis.AddNote(storednote[0], # storednote[4], 
-                      axes1, 
+                      guihandle.axes1, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
@@ -821,10 +998,10 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 
     if dialog != None:
         dialog.Update(4, 'Charting daily electricity usage...')
-    ccvis.PlotDailyData(axes2, dayDataCollection, graphunits, lastkwh)
+    ccvis.PlotDailyData(guihandle.axes2, dayDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(2):
         ccvis.AddNote(storednote[0], # storednote[4], 
-                      axes2, 
+                      guihandle.axes2, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
@@ -833,10 +1010,10 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 
     if dialog != None:
         dialog.Update(5, 'Charting monthly electricity usage...')
-    ccvis.PlotMonthlyData(axes3, monthDataCollection, graphunits, lastkwh)
+    ccvis.PlotMonthlyData(guihandle.axes3, monthDataCollection, graphunits, lastkwh)
     for storednote in ccdb.RetrieveAnnotations(3):        
         ccvis.AddNote(storednote[0], # storednote[4], 
-                      axes3, 
+                      guihandle.axes3, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
@@ -850,17 +1027,17 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
     if changeaxesonly == False:
         if dialog != None:
             dialog.Update(6, 'Identifying electricity usage trends...')
-        ccvis.IdentifyTrends(trendspg, hourDataCollection, dayDataCollection, monthDataCollection)
+        ccvis.IdentifyTrends(guihandle.trendspg, hourDataCollection, dayDataCollection, monthDataCollection)
 
     if dialog != None:
         dialog.Update(7, 'Charting an average day...')
     if averageDayData:
-        ccvis.PlotAverageDay(averageDayData, axes4, trendspg, graphunits, lastkwh)
+        ccvis.PlotAverageDay(averageDayData, guihandle.axes4, guihandle.trendspg, graphunits, lastkwh)
 
     if dialog != None:    
         dialog.Update(8, 'Charting an average week...')
     if averageWeekData:
-        ccvis.PlotAverageWeek(averageWeekData, axes5, trendspg, graphunits, lastkwh)
+        ccvis.PlotAverageWeek(averageWeekData, guihandle.axes5, guihandle.trendspg, graphunits, lastkwh)
 
     if dialog != None:
         dialog.Update(9, 'Formatting charts...')
@@ -869,59 +1046,65 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
     hoursl = HourLocator(range(12,24,12)) 
     datesFmt = DateFormatter('%d %b')
     timesFmt = DateFormatter('%I%p') #('%H:%M')
-    axes1.xaxis.set_minor_formatter(timesFmt)
-    axes1.xaxis.set_major_formatter(datesFmt)
-    axes1.xaxis.set_major_locator(daysl) 
-    axes1.xaxis.set_minor_locator(hoursl)    
+    guihandle.axes1.xaxis.set_minor_formatter(timesFmt)
+    guihandle.axes1.xaxis.set_major_formatter(datesFmt)
+    guihandle.axes1.xaxis.set_major_locator(daysl) 
+    guihandle.axes1.xaxis.set_minor_locator(hoursl)    
     # 
     # 
     daysFmt  = DateFormatter('%d')
     mthsFmt  = DateFormatter('%b %y')
     datesl = DayLocator(range(2,31,2)) 
     monthsl = MonthLocator()
-    axes2.xaxis.set_major_formatter(mthsFmt)
-    axes2.xaxis.set_major_locator(monthsl)
-    axes2.xaxis.set_minor_formatter(daysFmt)
-    axes2.xaxis.set_minor_locator(datesl)
+    guihandle.axes2.xaxis.set_major_formatter(mthsFmt)
+    guihandle.axes2.xaxis.set_major_locator(monthsl)
+    guihandle.axes2.xaxis.set_minor_formatter(daysFmt)
+    guihandle.axes2.xaxis.set_minor_locator(datesl)
     #
     monthsFmt = DateFormatter('%b')
     yearsFmt = DateFormatter('%Y')
-    axes3.xaxis.set_minor_formatter(monthsFmt)
+    guihandle.axes3.xaxis.set_minor_formatter(monthsFmt)
     monthsl = MonthLocator(range(2,13,1))
     yearsl = YearLocator()
-    axes3.xaxis.set_major_locator(yearsl)
-    axes3.xaxis.set_minor_locator(monthsl)
-    axes3.xaxis.set_major_formatter(yearsFmt)
+    guihandle.axes3.xaxis.set_major_locator(yearsl)
+    guihandle.axes3.xaxis.set_minor_locator(monthsl)
+    guihandle.axes3.xaxis.set_major_formatter(yearsFmt)
     #
-    axes4.xaxis.set_major_locator(HourLocator(range(1, 24, 2)))
-    axes4.xaxis.set_major_formatter(DateFormatter('%H00'))
+    guihandle.axes4.xaxis.set_major_locator(HourLocator(range(1, 24, 2)))
+    guihandle.axes4.xaxis.set_major_formatter(DateFormatter('%H00'))
     #
-    axes5.xaxis.set_major_locator(DayLocator(range(0,8,1)))
-    axes5.xaxis.set_major_formatter(DateFormatter('%a'))
+    guihandle.axes5.xaxis.set_major_locator(DayLocator(range(0,8,1)))
+    guihandle.axes5.xaxis.set_major_formatter(DateFormatter('%a'))
     #
     if dialog != None:
         dialog.Update(10, 'Complete. Redrawing...')
     #
     try:
-        axes1.figure.canvas.draw()
+        guihandle.axes1.figure.canvas.draw()
     except:
         plotter.deletepage('hourly')
     try:
-        axes2.figure.canvas.draw()
+        guihandle.axes2.figure.canvas.draw()
     except:
         plotter.deletepage('daily')
     try:
-        axes3.figure.canvas.draw() # error?
+        guihandle.axes3.figure.canvas.draw() # error?
     except:
         plotter.deletepage('monthly')
     try:
-        axes4.figure.canvas.draw()
+        guihandle.axes4.figure.canvas.draw()
     except:
         plotter.deletepage('average day')
     try:
-        axes5.figure.canvas.draw()
+        guihandle.axes5.figure.canvas.draw()
     except:
         plotter.deletepage('average week')
+    #
+    # retrieve preference for whether targets should be shown
+    enableTarget = ccdb.RetrieveSetting("enabletarget")
+    if enableTarget == '1':
+        guihandle.displayUsageTarget()
+    #
     if dialog != None:
         dialog.Update(11, 'Complete')
 
@@ -930,8 +1113,8 @@ def drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, dialog, changeaxes
 # walks the user through connecting to the database used to persist 
 #   historical CurrentCost usage data, and settings and preferences
 # 
-def connectToDatabase():
-    global ccdb, axes1, axes2, axes3, axes4, axes5, trendspg
+def connectToDatabase(guihandle):
+    global ccdb
 
     # what is the path to the database used to store CurrentCost data?
     dbLocation = ""
@@ -1076,8 +1259,23 @@ def connectToDatabase():
         settingscontents.write(dbLocation)
         settingscontents.close()
 
-    drawMyGraphs(axes1, axes2, axes3, axes4, axes5, trendspg, progdlg, False)
+    # retrieve preference for whether targets should be shown
+    #  and cast to boolean    
+    enableTarget = ccdb.RetrieveSetting("enabletarget")
+    if enableTarget == None:
+        enableTarget = 0
+        ccdb.StoreSetting("enabletarget", enableTarget)
+    if enableTarget == '0':
+        enableTarget = False
+    else:
+        enableTarget = True
+    guihandle.f1.Check(guihandle.MENU_TARGET, enableTarget)
+
+    # draw the graphs
+
+    drawMyGraphs(guihandle, progdlg, False)
     progdlg.Destroy()
+
     return True
 
 
@@ -1088,7 +1286,7 @@ def connectToDatabase():
 # if the user click's on the note itself, the details of that note will be 
 #  displayed. (unfinished)
 def onMouseClick(event):
-    global ccdb, graphunits
+    global ccdb, graphunits, frame
 
     if isinstance(event.artist, Text):
         text = event.artist
@@ -1130,11 +1328,11 @@ def onMouseClick(event):
             clickedkwh = clickedbar.get_height() / kwhcost
     
         clickedaxes = clickedbar.get_axes()
-        if clickedaxes == axes1:
+        if clickedaxes == frame.axes1:
             clickedgraph = "hours"        
-        elif clickedaxes == axes2:
+        elif clickedaxes == frame.axes2:
             clickedgraph = "days"
-        elif clickedaxes == axes3:
+        elif clickedaxes == frame.axes3:
             clickedgraph = "months"
     
         dlg = wx.TextEntryDialog(None, 'Add a note:','CurrentCost')
@@ -1150,33 +1348,34 @@ def onMouseClick(event):
 
 
 def demo():
+    global frame
     app = wx.App()
     frame = MyFrame(None,-1,'CurrentCost')
     #
-    global plotter, axes1, axes2, axes3, axes4, axes5, trendspg
+    global plotter
     #
     plotter = PlotNotebook(frame)
     # 
-    trendspg = plotter.addtextpage('trends')
-    axes1    = plotter.add('hourly').gca()
-    axes2    = plotter.add('daily').gca()
-    axes3    = plotter.add('monthly').gca()    
-    axes4    = plotter.add('average day').gca()
-    axes5    = plotter.add('average week').gca()
+    frame.trendspg = plotter.addtextpage('trends')
+    frame.axes1    = plotter.add('hourly').gca()
+    frame.axes2    = plotter.add('daily').gca()
+    frame.axes3    = plotter.add('monthly').gca()    
+    frame.axes4    = plotter.add('average day').gca()
+    frame.axes5    = plotter.add('average week').gca()
     #
-    axes1.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)    
-    axes2.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
-    axes3.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
-    axes4.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
-    axes5.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
+    frame.axes1.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)    
+    frame.axes2.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
+    frame.axes3.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
+    frame.axes4.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
+    frame.axes5.figure.canvas.mpl_connect('motion_notify_event', frame.UpdateStatusBar)
     #
-    axes1.figure.canvas.mpl_connect('pick_event', onMouseClick)
-    axes2.figure.canvas.mpl_connect('pick_event', onMouseClick)
-    axes3.figure.canvas.mpl_connect('pick_event', onMouseClick)
+    frame.axes1.figure.canvas.mpl_connect('pick_event', onMouseClick)
+    frame.axes2.figure.canvas.mpl_connect('pick_event', onMouseClick)
+    frame.axes3.figure.canvas.mpl_connect('pick_event', onMouseClick)
     # 
     frame.Show()
     #
-    if connectToDatabase() == False:
+    if connectToDatabase(frame) == False:
         return
     app.MainLoop()
     
