@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*- 
+
 #
 # CurrentCost GUI
 # 
@@ -23,7 +25,6 @@ import datetime
 
 from dateutil.relativedelta import relativedelta
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
-
 
 
 #
@@ -298,6 +299,7 @@ class CurrentCostVisualisations():
             print highestday
 
 
+
     #
     # plot the user's usage compared with the average usage of the group that 
     #  they are a member of
@@ -402,7 +404,15 @@ class CurrentCostVisualisations():
         groupdataaxes.figure.canvas.draw()
 
 
-
+    def DrawTargetLine(self, targetvalue, axes):
+        # TODO : if currently graphing £, convert target value from kwh into £
+        # 
+        line = axes.axhline(y=targetvalue, color='y', linewidth=2)  
+        axes.figure.canvas.draw()
+        return line
+    def DeleteTargetLine(self, targetvalue, axes):
+        targetvalue.remove()
+        axes.figure.canvas.draw()
 
     #
     # identify some textual descriptions of trends in the CurrentCost data
