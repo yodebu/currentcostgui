@@ -811,6 +811,8 @@ class MyFrame(wx.Frame):
 
 
     def displayUsageTarget(self):
+        global ccdb, graphunits
+    
         annualtarget = ccdb.RetrieveSetting("annualtarget")
         annualtargetfloat = float(annualtarget)
         kwhcost = self.getKWHCost(False)
@@ -828,27 +830,27 @@ class MyFrame(wx.Frame):
         ccvis = CurrentCostVisualisations()
 
         try:
-            targetlines[self.axes1] = ccvis.DrawTargetLine(hourlykwh, self.axes1)
+            targetlines[self.axes1] = ccvis.DrawTargetLine(hourlykwh, self.axes1, graphunits, kwhcost)
         except:
             # noop
             i = 0
         try:
-            targetlines[self.axes2] = ccvis.DrawTargetLine(dailykwh, self.axes2)
+            targetlines[self.axes2] = ccvis.DrawTargetLine(dailykwh, self.axes2, graphunits, kwhcost)
         except:
             # noop
             i = 0
         try:
-            targetlines[self.axes3] = ccvis.DrawTargetLine(monthlykwh, self.axes3)
+            targetlines[self.axes3] = ccvis.DrawTargetLine(monthlykwh, self.axes3, graphunits, kwhcost)
         except:
             # noop
             i = 0    
         try:
-            targetlines[self.axes4] = ccvis.DrawTargetLine(hourlykwh, self.axes4)
+            targetlines[self.axes4] = ccvis.DrawTargetLine(hourlykwh, self.axes4, graphunits, kwhcost)
         except:
             # noop
             i = 0    
         try:
-            targetlines[self.axes5] = ccvis.DrawTargetLine(dailykwh, self.axes5)
+            targetlines[self.axes5] = ccvis.DrawTargetLine(dailykwh, self.axes5, graphunits, kwhcost)
         except:
             # noop
             i = 0    

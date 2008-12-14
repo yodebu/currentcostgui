@@ -404,10 +404,13 @@ class CurrentCostVisualisations():
         groupdataaxes.figure.canvas.draw()
 
 
-    def DrawTargetLine(self, targetvalue, axes):
-        # TODO : if currently graphing £, convert target value from kwh into £
-        # 
-        line = axes.axhline(y=targetvalue, color='y', linewidth=2)  
+    def DrawTargetLine(self, targetvalue, axes, graphunits, lastkwh):
+        # do we want to plot data in kWh or financial cost?
+        kwhfactor = 1
+        if graphunits != "kWh":
+            kwhfactor = float(lastkwh)
+
+        line = axes.axhline(y=(targetvalue * kwhfactor), color='y', linewidth=2)  
         axes.figure.canvas.draw()
         return line
     def DeleteTargetLine(self, targetvalue, axes):
