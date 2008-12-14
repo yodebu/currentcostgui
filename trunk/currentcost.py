@@ -824,7 +824,7 @@ class MyFrame(wx.Frame):
         annualkwh  = annualtargetfloat / float(kwhcost)
         monthlykwh = annualkwh / 12
         dailykwh   = annualkwh / 365
-        hourlykwh  = annualkwh / 8760
+        hourlykwh  = annualkwh / 4380
 
         global targetlines
         ccvis = CurrentCostVisualisations()
