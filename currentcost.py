@@ -1296,9 +1296,11 @@ def onMouseClick(event):
         notetext = ccdb.RetrieveAnnotation(noteid)
         if notetext:
             if event.mouseevent.button == 1:
-                print notetext[1]
-                print notetext[4]
-                print "--------------------"
+                displayNote = wx.MessageDialog(None, 
+                                               notetext[4],
+                                               'CurrentCost : Graph note',
+                                               style=(wx.OK | wx.ICON_INFORMATION))
+                displayNote.ShowModal()
             else:
                 confdlg = wx.MessageDialog(None,
                                            'Do you want to delete the note: "' + notetext[4] + '"?',
