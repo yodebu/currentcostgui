@@ -376,7 +376,7 @@ class CurrentCostVisualisations():
                 recentbar = groupdataaxes.bar(rcday, 
                                               rcval, 
                                               width=barwidth, 
-                                              color='#33CC00', 
+                                              color='#33CC00',
                                               picker=True)
             #
             # draw the user's most recent week
@@ -387,7 +387,7 @@ class CurrentCostVisualisations():
                 groupbar = groupdataaxes.bar(avday, 
                                              avval, 
                                              width=barwidth, 
-                                             color='#003399', 
+                                             color='#003399',
                                              picker=True)
 
         # add a legend to explain the three bars
@@ -404,6 +404,90 @@ class CurrentCostVisualisations():
         groupdataaxes.figure.canvas.draw()
 
 
+    # 
+    # plot average daily usage for specific users
+    # 
+    def PlotFriendsWeekData(self, frienddataaxes, friendData):
+
+        # initialise graph canvas
+        frienddataaxes.cla()
+        frienddataaxes.grid(True)
+        frienddataaxes.set_ylabel('kWh')
+        frienddataaxes.set_title('Average daily power usage')
+
+        # how many users we want to display determines the width of the bars
+        numusers = len(friendData)
+        barwidth = 1.0 / (numusers + 1)
+        hrwidth = 24 / (numusers + 1)
+
+        # bars we are about to draw (need the handles to be able to add 
+        #  the legend afterwards)
+        userbars  = {}
+
+        # different colour bar for each user
+        useridx = 0
+        colors = [ '#006600', '#EECC00', '#003399', '#663300' ]
+
+        # draw the user's average week
+        for username in friendData:
+
+            # for each user...
+
+            for i in range(0, 7):
+
+                # for each day of the week...
+
+                # check we have a value for this day before trying to access
+                if str(i) in friendData[username]:                   
+                    avval = friendData[username][str(i)]
+                
+                    # we don't plot 0 items - matplotlib doesn't handle it very well, 
+                    # often throwing an exception if we try!
+                    if avval != 0:
+                        userbars[username] = frienddataaxes.bar(datetime.datetime(2008, 
+                                                                                  9, 
+                                                                                  i+1, 
+                                                                                  useridx * hrwidth, 
+                                                                                  0, 
+                                                                                  0), 
+                                                                avval, 
+                                                                width=barwidth, 
+                                                                color=colors[useridx],
+                                                                picker=True)
+
+            # increment counter - so we pick a different colour for the next user
+            useridx = useridx + 1
+
+        # graph drawing complete - time to tidy up
+
+        # add legend
+        numusers = len(userbars)
+        if numusers == 1:
+            frienddataaxes.legend((userbars[userbars.keys()[0]]), (userbars.keys()))
+        elif numusers == 2:
+            frienddataaxes.legend((userbars[userbars.keys()[0]], userbars[userbars.keys()[1]]),
+                                  (userbars.keys()[0], userbars.keys()[1]) )
+        elif numusers == 3:
+            frienddataaxes.legend((userbars[userbars.keys()[0]], userbars[userbars.keys()[1]], userbars[userbars.keys()[2]]),
+                                  (userbars.keys()[0], userbars.keys()[1], userbars.keys()[2]) )
+        elif numusers == 4:
+            frienddataaxes.legend((userbars[userbars.keys()[0]], userbars[userbars.keys()[1]], userbars[userbars.keys()[2]], userbars[userbars.keys()[3]]),
+                                  (userbars.keys()[0], userbars.keys()[1], userbars.keys()[2], userbars.keys()[3]) )
+
+        # format the canvas
+        frienddataaxes.xaxis.set_major_locator(DayLocator(range(0,8,1)))
+        frienddataaxes.xaxis.set_major_formatter(DateFormatter('            %a'))
+        frienddataaxes.figure.canvas.draw()
+
+
+
+    #
+    # 'Target Line' - a horizontal line we can draw across bar graphs to give
+    #   a target usage to aim for
+    # 
+    #  we have a method to add this line, and a method to delete it once drawn
+    # 
+
     def DrawTargetLine(self, targetvalue, axes, graphunits, lastkwh):
         # do we want to plot data in kWh or financial cost?
         kwhfactor = 1
@@ -413,6 +497,7 @@ class CurrentCostVisualisations():
         line = axes.axhline(y=(targetvalue * kwhfactor), color='y', linewidth=2)  
         axes.figure.canvas.draw()
         return line
+
     def DeleteTargetLine(self, targetvalue, axes):
         targetvalue.remove()
         axes.figure.canvas.draw()

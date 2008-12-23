@@ -146,6 +146,16 @@ class GoogleAppEngine():
         return False
 
 
+    def DownloadCurrentCostUserDataFromGoogle(self, username):
+        # check username with Google App Engine 
+        postreq_data = urllib.urlencode( { "username"  : username } )
+        post_req = urllib2.Request('http://currentcost.appspot.com/friends/getweekavg', data=postreq_data)
+        post_resp = urllib2.urlopen(post_req)
+        post_resp_body = post_resp.read()
+        return json.loads(post_resp_body)
+
+
+
     #
     # downloads group averages from Google App Engine
     # 

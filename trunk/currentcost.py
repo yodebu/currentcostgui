@@ -212,8 +212,8 @@ class MyFrame(wx.Frame):
         #f3.Append(MENU_DNLOAD,  "Download data from web...", "Download CurrentCost data from your groups from the web")
         f3.Append(MENU_SYNC,  "Sync with web...", "Synchronise your CurrentCost data with the web to see how you compare with your groups")
         f3.AppendSeparator()
-        #f3.Append(MENU_COMPARE, "Compare with friends...", "Compare your CurrentCost averages with up to four friends")
-        #f3.AppendSeparator()
+        f3.Append(MENU_COMPARE, "Compare friends...", "Compare CurrentCost averages of up to four users")
+        f3.AppendSeparator()
         f3.Append(MENU_ACCNT,   "Create account...", "Create an account online to store and access CurrentCost data")
         f3.Append(MENU_PROFILE, "Manage profile...", "Manage online profile")
 
@@ -275,7 +275,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.13"
+        info.Version = "0.9.14"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -323,7 +323,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.13":
+        elif latestversion != "0.9.14":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -407,14 +407,14 @@ class MyFrame(wx.Frame):
 
 
     #
-    #  compare with specific users
+    #  display average data for specific users
 
     def onCompareUsers(self, event):
 
         global ccdb
 
         userEntryDialog = wx.TextEntryDialog(self, 
-                                             'Enter up to four usernames of friends to compare with\n (one username per line):',
+                                             'Enter up to four usernames of friends to compare\n (one username per line):',
                                              'CurrentCost',
                                              '',
                                              wx.TE_MULTILINE | wx.OK | wx.CANCEL )
@@ -426,11 +426,38 @@ class MyFrame(wx.Frame):
         if result != wx.ID_OK:
             return
 
+
+        progDlg = wx.ProgressDialog ('CurrentCost', 
+                                     'Comparing electricity usage with named friends', 
+                                     maximum = 6, 
+                                     style=wx.PD_CAN_ABORT)    
+
+        (tocontinue, toskip) = progDlg.Update(1, 'Preparing visualisations class')
+        if tocontinue == False:
+            progDlg.Update(6, "Cancelled")
+            progDlg.Destroy()
+            return
+
+        ccvis = CurrentCostVisualisations()
+
+        progDlg.Update(2, 'Preparing Google communications class')
         gae = GoogleAppEngine()
 
         verifiedusers = []
 
+        (tocontinue, toskip) = progDlg.Update(3, 'Verifying that requested users have granted access')
+        if tocontinue == False:
+            progDlg.Update(6, "Cancelled")
+            progDlg.Destroy()
+            return
+
         for user in users:
+            (tocontinue, toskip) = progDlg.Update(3, 'Verifying that ' + user + ' has granted access')
+            if tocontinue == False:
+                progDlg.Update(6, "Cancelled")
+                progDlg.Destroy()
+                return
+            
             res = gae.VerifyPermissionsForUser(self, ccdb, user)
             if res == None:
                 errdlg = wx.MessageDialog(self,
@@ -457,11 +484,61 @@ class MyFrame(wx.Frame):
         # verifiedusers is a list of usernames
         #  we will ignore everything after the first four
 
+        if len(verifiedusers) == 0:
+            progDlg.Update(6, "Nothing to display")
+            progDlg.Destroy()
+            return
+            
+
         maxrange = 4
         if len(verifiedusers) < 4:
             maxrange = len(verifiedusers)
+
+        # we have a list of names to download data for
+
+        (tocontinue, toskip) = progDlg.Update(4, 'Downloading usage for friends')
+        if tocontinue == False:
+            progDlg.Update(6, "Cancelled")
+            progDlg.Destroy()
+            return
+
+        graphdata = {}
         for i in range(0, maxrange):
-            print verifiedusers[i]
+            (tocontinue, toskip) = progDlg.Update(5, 'Downloading ' + verifiedusers[i] + '\'s data')
+            if tocontinue == False:
+                progDlg.Update(6, "Cancelled")
+                progDlg.Destroy()
+                return
+            graphdata[verifiedusers[i]] = gae.DownloadCurrentCostUserDataFromGoogle(verifiedusers[i])
+
+            # tell the user if we wont be displaying data for a requested user
+            datachk = len(graphdata[verifiedusers[i]])
+            if datachk == 0:
+                errdlg = wx.MessageDialog(self,
+                                          verifiedusers[i] + ' has not uploaded data to the CurrentCost site',
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_ERROR))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+            elif datachk < 7:
+                errdlg = wx.MessageDialog(self,
+                                          'Averages could only obtained for ' + str(datachk) + ' days from ' + verifiedusers[i],
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_INFORMATION))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+
+                
+
+        progDlg.Update(5, 'Drawing graph')
+        tabname = "comparing friends"
+        plotter.deletepage(tabname)
+        friendaxes = plotter.add(tabname).gca()
+        ccvis.PlotFriendsWeekData(friendaxes, graphdata)
+
+        progDlg.Update(6, 'Complete')
+        progDlg.Destroy()
+
 
             
 
