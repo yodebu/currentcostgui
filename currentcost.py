@@ -283,7 +283,8 @@ class MyFrame(wx.Frame):
     def UpdateStatusBar(self, event):
         if event.inaxes:
             x, y = event.xdata, event.ydata
-            self.statusBar.SetStatusText(("%.2f kWh" % y), 0)
+            statustext = "%.2f " + graphunits
+            self.statusBar.SetStatusText((statustext % y), 0)
 
 
 
