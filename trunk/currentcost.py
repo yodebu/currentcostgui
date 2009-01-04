@@ -941,12 +941,15 @@ class MyFrame(wx.Frame):
     # redraw the graphs to use kWh as a unit in the graph
     #
     def onShowKWH (self, event):
-        global graphunits
+        global ccdb, graphunits
 
         # update the GUI to show what the user has selected
         self.f1.Check(self.MENU_SHOWKWH, True)
         self.f1.Check(self.MENU_SHOWGBP, False)
+
+        # store the setting
         graphunits = "kWh"
+        ccdb.StoreSetting("graphunits", graphunits)
 
         # redraw the graphs
         progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)
@@ -960,9 +963,13 @@ class MyFrame(wx.Frame):
         global ccdb, graphunits
         #
         if self.getKWHCost(True):
+            # store the setting
             graphunits = "£"
+            ccdb.StoreSetting("graphunits", "GBP")  # we can't store '£' in pysqlite
+            # update the GUI
             self.f1.Check(self.MENU_SHOWKWH, False)
             self.f1.Check(self.MENU_SHOWGBP, True)
+            # redraw the graphs
             progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)    
             drawMyGraphs(self, progdlg, True)
             progdlg.Destroy()
@@ -1354,6 +1361,16 @@ def connectToDatabase(guihandle):
     else:
         enableTarget = True
     guihandle.f1.Check(guihandle.MENU_TARGET, enableTarget)
+
+    # retrieve preference for whether data should be shown 
+    #  in kWH or £
+    enableGraphUnit = ccdb.RetrieveSetting("graphunits")
+    if enableGraphUnit != None:
+        # we only need to do something if '£' was persisted, otherwise
+        #  just leave the default KWH setting
+        if enableGraphUnit == "GBP":
+            global graphunits
+            graphunits = "£"
 
     # draw the graphs
 
