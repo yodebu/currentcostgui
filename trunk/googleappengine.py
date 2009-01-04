@@ -249,11 +249,11 @@ class GoogleAppEngine():
         # complete - finished with progress dialog
         progdlg.Destroy()
 
-        currentcostdata = {}
-        currentcostdata['groupdata'] = currentcostgroups
-        currentcostdata['daydata'] = dailydata
+        #currentcostdata = {}
+        #currentcostdata['groupdata'] = currentcostgroups
+        #currentcostdata['daydata'] = dailydata
 
-        return currentcostdata
+        return currentcostgroups, dailydata
 
 
     #
