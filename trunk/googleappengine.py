@@ -173,7 +173,7 @@ class GoogleAppEngine():
         # persist the username - to save it needing to be entered next time
         ccdatabase.StoreSetting("googleemail", self.googleemail)
 
-        numitems = 2
+        numitems = 3
         curidx   = 0
 
         # prepare progress dialog
@@ -226,6 +226,8 @@ class GoogleAppEngine():
 
         currentcostgroups = {}
 
+        progdlg.Update(curidx, 'Downloading group data')
+
         grpslist = json.loads(post_resp_body)
         for group in grpslist:
             grpid = grpslist[group]['id']
@@ -234,10 +236,24 @@ class GoogleAppEngine():
             currentcostgroups[grpid].groupdesc = grpslist[group]['description']
             currentcostgroups[grpid].groupdata = self.DownloadGroupDataFromGoogle(grpid)
 
+        # download day averages that is used to draw a scatter diagram
+        curidx += 1
+        progdlg.Update(curidx, 'Downloading daily data')
+
+        post_req = urllib2.Request('http://currentcost.appspot.com/ccdata/days')
+        post_resp = urllib2.urlopen(post_req)
+        post_resp_body = post_resp.read()
+
+        dailydata = json.loads(post_resp_body)
+
         # complete - finished with progress dialog
         progdlg.Destroy()
 
-        return currentcostgroups
+        currentcostdata = {}
+        currentcostdata['groupdata'] = currentcostgroups
+        currentcostdata['daydata'] = dailydata
+
+        return currentcostdata
 
 
     #

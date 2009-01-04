@@ -24,7 +24,7 @@
 import datetime
 
 from dateutil.relativedelta import relativedelta
-from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
+from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, date2num, drange
 
 
 #
@@ -479,6 +479,101 @@ class CurrentCostVisualisations():
         frienddataaxes.xaxis.set_major_formatter(DateFormatter('            %a'))
         frienddataaxes.figure.canvas.draw()
 
+    # 
+    # plot average daily usage for specific users
+    # 
+    def PlotDailyScatterGraph(self, daydataaxes, averageWeekData, dailyData):
+
+        # prepare store of x,y values for scatter graph
+        personaldates = []
+        personaldata = []
+        everyonedates = []
+        everyonedata = []
+
+        # turn the collection of dailyData into a set of x,y values
+        monday = datetime.datetime(2008, 9, 1, 0, 0, 0)
+        mondaydate = date2num(monday)
+        for dataitem in dailyData['mon']:
+            everyonedates.append(mondaydate)
+            everyonedata.append(float(dailyData['mon'][dataitem]))
+        if averageWeekData[monday]:
+            personaldates.append(mondaydate)
+            personaldata.append(float(averageWeekData[monday]))
+
+        tuesday = datetime.datetime(2008, 9, 2, 0, 0, 0)
+        tuesdaydate = date2num(tuesday)
+        for dataitem in dailyData['tue']:
+            everyonedates.append(tuesdaydate)
+            everyonedata.append(float(dailyData['tue'][dataitem]))
+        if averageWeekData[tuesday]:
+            personaldates.append(tuesdaydate)
+            personaldata.append(float(averageWeekData[tuesday]))
+
+        wednesday = datetime.datetime(2008, 9, 3, 0, 0, 0)
+        wednesdaydate = date2num(wednesday)
+        for dataitem in dailyData['wed']:
+            everyonedates.append(wednesdaydate)
+            everyonedata.append(float(dailyData['tue'][dataitem]))
+        if averageWeekData[wednesday]:
+            personaldates.append(wednesdaydate)
+            personaldata.append(float(averageWeekData[wednesday]))
+
+        thursday = datetime.datetime(2008, 9, 4, 0, 0, 0)
+        thursdaydate = date2num(thursday)
+        for dataitem in dailyData['thu']:
+            everyonedates.append(thursdaydate)
+            everyonedata.append(float(dailyData['thu'][dataitem]))
+        if averageWeekData[thursday]:
+            personaldates.append(thursdaydate)
+            personaldata.append(float(averageWeekData[thursday]))
+
+
+        friday = datetime.datetime(2008, 9, 5, 0, 0, 0)
+        fridaydate = date2num(friday)
+        for dataitem in dailyData['fri']:
+            everyonedates.append(fridaydate)
+            everyonedata.append(float(dailyData['fri'][dataitem]))
+        if averageWeekData[friday]:
+            personaldates.append(fridaydate)
+            personaldata.append(float(averageWeekData[friday]))
+
+        saturday = datetime.datetime(2008, 9, 6, 0, 0, 0)
+        saturdaydate = date2num(saturday)
+        for dataitem in dailyData['sat']:
+            everyonedates.append(saturdaydate)
+            everyonedata.append(float(dailyData['sat'][dataitem]))
+        if averageWeekData[saturday]:
+            personaldates.append(saturdaydate)
+            personaldata.append(float(averageWeekData[saturday]))
+
+        sunday = datetime.datetime(2008, 9, 7, 0, 0, 0)
+        sundaydate = date2num(sunday)
+        for dataitem in dailyData['sun']:
+            everyonedates.append(sundaydate)
+            everyonedata.append(float(dailyData['sun'][dataitem]))        
+        if averageWeekData[sunday]:
+            personaldates.append(sundaydate)
+            personaldata.append(float(averageWeekData[sunday]))
+
+
+        # initialise graph canvas
+        daydataaxes.cla()
+        daydataaxes.grid(False)
+        daydataaxes.set_ylabel('kWh')
+        daydataaxes.set_title('Everyone\'s average daily power usage')
+
+        # plot the set of x,y values
+        daydataaxes.scatter(everyonedates, everyonedata, s=80,  color="green", marker='x')
+        daydataaxes.scatter(personaldates, personaldata, s=120, color="red",   marker='^')
+
+        # format the canvas        
+        daydataaxes.xaxis.set_major_formatter(DateFormatter('%a'))
+        daydataaxes.set_ylim(ymin=0)
+        daydataaxes.set_xlim(xmin=date2num(datetime.datetime(2008, 8, 31, 18, 0, 0)), 
+                             xmax=date2num(datetime.datetime(2008, 9, 7, 6, 0, 0)))
+
+        # finished! draw the graph
+        daydataaxes.figure.canvas.draw()
 
 
     #

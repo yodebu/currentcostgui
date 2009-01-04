@@ -368,13 +368,18 @@ class MyFrame(wx.Frame):
         averageDayData = ccdata.CalculateAverageDay(hourDataCollection)
         averageWeekData = ccdata.CalculateAverageWeek(dayDataCollection)
 
-        groupdata = gae.DownloadCurrentCostDataFromGoogle(self, ccdb)
-        if groupdata:
-            for group in groupdata:
-                tabname = groupdata[group].groupname + " : week"
+        googledata = gae.DownloadCurrentCostDataFromGoogle(self, ccdb)
+        if googledata['groupdata']:
+            for group in googledata['groupdata']:
+                tabname = googledata['groupdata'][group].groupname + " : week"
                 plotter.deletepage(tabname)
                 groupdataaxes = plotter.add(tabname).gca()
-                ccvis.PlotGroupWeekData(dayDataCollection, averageWeekData, groupdata[group], groupdataaxes)
+                ccvis.PlotGroupWeekData(dayDataCollection, averageWeekData, googledata['groupdata'][group], groupdataaxes)
+        if googledata['daydata']:
+            tabname = 'everyone : week'
+            plotter.deletepage(tabname)
+            dayaxes = plotter.add(tabname).gca()            
+            ccvis.PlotDailyScatterGraph(dayaxes, averageWeekData, googledata['daydata'])
 
     #
     # upload user data to Google
@@ -390,10 +395,9 @@ class MyFrame(wx.Frame):
                                    "This will upload your historical electricity "
                                    "usage data to a publicly-accessible web server. \n\n"
                                    "Every effort will be made to ensure that this "
-                                   "data will only be visible in anonymised forms - "
-                                   "such as as a part of averages - and not as "
-                                   "individual electricity records identified with "
-                                   "specific users. \n\n"
+                                   "data will only be visible in anonymised forms\n "
+                                   "and not as individual electricity records "
+                                   "identified with specific users. \n\n"
                                    "However, if you have any concerns about this "
                                    "information being public, please click NO now.",
                                    'Are you sure?', 
