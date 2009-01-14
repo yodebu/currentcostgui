@@ -1372,8 +1372,8 @@ def connectToDatabase(guihandle):
             global graphunits
             graphunits = "£"
             # update the GUI
-            self.f1.Check(self.MENU_SHOWKWH, False)
-            self.f1.Check(self.MENU_SHOWGBP, True)
+            guihandle.f1.Check(self.MENU_SHOWKWH, False)
+            guihandle.f1.Check(self.MENU_SHOWGBP, True)
 
 
     # draw the graphs
