@@ -37,7 +37,7 @@ from currentcostdata import CurrentCostUpdate
 # So we provide the ability to receive CurrentCost data via MQTT. This also 
 #  lets us use the program remotely.
 # 
-# This class is used to provide the MQTT connection.
+# This class is used to provide the MQTT connection to download history data.
 # 
 # 
 #  Dale Lane (http://dalelane.co.uk/blog)
@@ -61,7 +61,7 @@ class CurrentCostMQTTConnection():
     # The function will prompt the user for the details required for the 
     #  connection
     # 
-    def EstablishConnection(self, gui, settingsdb, dialog, dlgend, ipaddr, topicString):
+    def EstablishConnection(self, gui, dialog, dlgend, ipaddr, topicString):
 
         #
         # try and make the connection to the Broker
