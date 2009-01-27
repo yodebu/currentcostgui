@@ -48,6 +48,7 @@ from currentcostdatafunctions  import CurrentCostDataFunctions
 from currentcostdata           import CurrentCostUpdate
 from currentcostvisualisations import CurrentCostVisualisations
 from currentcostdb             import CurrentCostDB
+from currentcostlivedata       import CurrentCostLiveData
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx as Toolbar
@@ -104,8 +105,15 @@ from matplotlib.text import Text
 #   currentcostgraphs.py         - matplotlib/wxPython code to implement the 
 #                                     tabs that make up the GUI
 #   currentcostvisualisations.py - draws bar graphs of CurrentCost data
+#   currentcostmqtt.py           - downloads history data from a remote 
+#                                     CurrentCost meter via MQTT
 #   googleappengine.py           - gets data from a Google App Engine web 
 #                                     service to show other user's data
+#   currentcostlivedata.py       - draws tab to display a graph of live data
+#   currentcostmqttlive.py       - downloads live data for the live graph 
+#                                     from a remote CurrentCost meter via MQTT
+#   currentcostcomlive.py        - downloads live data for the live graph 
+#                                     from a CurrentCost meter
 # 
 ############################################################################
 
@@ -139,16 +147,22 @@ ccdb   = CurrentCostDB()
 # used to represent a CurrentCost update downloaded from the device
 newupd = CurrentCostUpdate()
 
+# class to maintain a live data graph
+livedataagent = CurrentCostLiveData()
+
 # stores the unit to be used in graphs
 graphunits = "kWh"
 
 
 class MyFrame(wx.Frame):
+    f0 = None
     f1 = None
     mnuTarget = None
-    MENU_SHOWKWH = None
-    MENU_SHOWGBP = None
-    MENU_TARGET  = None
+    MENU_SHOWKWH   = None
+    MENU_SHOWGBP   = None
+    MENU_TARGET    = None
+    MENU_LIVE      = None
+    MENU_MQTT_LIVE = None
 
     #
     # these are the different graphs that we draw on
@@ -158,7 +172,7 @@ class MyFrame(wx.Frame):
     axes3 = None       # months
     axes4 = None       # average day
     axes5 = None       # average week
-
+    liveaxes = None    # live data
 
     def Build_Menus(self):
         global ccdb
@@ -166,6 +180,8 @@ class MyFrame(wx.Frame):
         MENU_HELP    = wx.NewId()
         MENU_CONFIG  = wx.NewId()
         MENU_MQTT    = wx.NewId()
+        self.MENU_LIVE    = wx.NewId()
+        self.MENU_MQTT_LIVE = wx.NewId()
         MENU_LOADDB  = wx.NewId()
         self.MENU_SHOWKWH = wx.NewId()
         self.MENU_SHOWGBP = wx.NewId()
@@ -187,9 +203,12 @@ class MyFrame(wx.Frame):
 
         menuBar = wx.MenuBar()
 
-        f0 = wx.Menu()
-        f0.Append(MENU_CONFIG, "Connect directly...", "Connect to a CurrentCost meter")
-        f0.Append(MENU_MQTT,   "Connect via MQTT...", "Receive CurrentCost update from an MQTT-compatible message broker")
+        self.f0 = wx.Menu()
+        self.f0.Append(MENU_CONFIG, "Download history (connect directly)...", "Connect to a CurrentCost meter and download CurrentCost history data")
+        self.f0.Append(MENU_MQTT,   "Download history (connect via MQTT)...", "Receive CurrentCost history data from an MQTT-compatible message broker")
+        self.f0.AppendSeparator()
+        self.f0.Append(self.MENU_LIVE,      "Show live data (connect directly)...", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
+        self.f0.Append(self.MENU_MQTT_LIVE, "Show live data (connect via MQTT)...", "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -227,7 +246,7 @@ class MyFrame(wx.Frame):
         f4.Append(MENU_HELPDOC, "General help", "See general documentation about the app")
 
 
-        menuBar.Append(f0, "&Options")
+        menuBar.Append(self.f0, "&Download data")
         menuBar.Append(self.f1, "&Data")
         menuBar.Append(f2, "&Export")
         menuBar.Append(f3, "&Web")
@@ -238,6 +257,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onAbout,           id=MENU_HELP)
         self.Bind(wx.EVT_MENU, self.onConnect,         id=MENU_CONFIG)
         self.Bind(wx.EVT_MENU, self.onMQTTSubscribe,   id=MENU_MQTT)
+        self.Bind(wx.EVT_MENU, self.onConnectLive,     id=self.MENU_LIVE)
+        self.Bind(wx.EVT_MENU, self.onMQTTConnectLive, id=self.MENU_MQTT_LIVE)
         self.Bind(wx.EVT_MENU, self.onExportHours,     id=MENU_EXPORT1)
         self.Bind(wx.EVT_MENU, self.onExportDays,      id=MENU_EXPORT2)
         self.Bind(wx.EVT_MENU, self.onExportMonths,    id=MENU_EXPORT3)
@@ -255,6 +276,15 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
         self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
         self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
+
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+
+    # added this to handle when the application is closed because we need 
+    #  to disconnect any open connections first
+    def OnClose(self, event):
+        livedataagent.disconnect()
+        self.Destroy()
 
 
     def __init__(self, parent, id, title):
@@ -275,7 +305,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.15"
+        info.Version = "0.9.16"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -324,7 +354,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.15":
+        elif latestversion != "0.9.16":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -591,7 +621,35 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onConnect (self, event):
-        global ccdb
+        global ccdb, livedataagent
+
+        # we cannot have multiple connections to a serial port at the same time
+        # so if we are using the COM port to display a live data graph, we 
+        # (currently) cannot download history data
+        # 
+        # this is because the two code functions (download live and download 
+        #  history) are separate and not very compatible. at some point, I'll 
+        #  come back to this, and merge the two, so we can grab a single 
+        #  history update while still getting live data readings, removing this
+        #  restriction
+        # 
+        # in the meantime, this restriction (aka kludge) remains
+        # 
+        if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
+            confdlg = wx.MessageDialog(self,
+                                       'Please disable the live data graph (temporarily) '
+                                       'before downloading history'
+                                       '\n\n'
+                                       'The application is currently limited in '
+                                       'that it cannot reuse the connection to the '
+                                       'CurrentCost meter currently open for the '
+                                       'live data feed.',
+                                       'CurrentCost',
+                                       style=(wx.OK | wx.ICON_INFORMATION))
+            result = confdlg.ShowModal()
+            confdlg.Destroy()
+            return
+
         dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
         lastcom = ccdb.RetrieveSetting("comport")
         if lastcom:
@@ -607,7 +665,6 @@ class MyFrame(wx.Frame):
         dlg.Destroy()
 
 
-
     #
     # connect to a CurrentCost meter via MQTT
     #  
@@ -619,6 +676,7 @@ class MyFrame(wx.Frame):
 
         if self.IsMQTTSupportAvailable():
             # used to provide an MQTT connection to a remote CurrentCost meter
+            # import the necessary third-party code to provide MQTT support
             mqttClientModule = __import__("currentcostmqtt")
             mqttClient = mqttClientModule.CurrentCostMQTTConnection()
 
@@ -630,7 +688,7 @@ class MyFrame(wx.Frame):
             # IP address
     
             dlg = wx.TextEntryDialog(self, 
-                                     'Specify the IP address of a message broker to connect to:',
+                                     'Specify the IP address or hostname of a message broker to connect to:',
                                      'CurrentCost')
             lastipaddr = ccdb.RetrieveSetting("mqttipaddress")
             if lastipaddr:
@@ -669,7 +727,7 @@ class MyFrame(wx.Frame):
                                         maximum = maxitems, 
                                         style=wx.PD_CAN_ABORT)
 
-            if mqttClient.EstablishConnection(self, ccdb, dialog, maxitems, ipaddr, topicString) == True:
+            if mqttClient.EstablishConnection(self, dialog, maxitems, ipaddr, topicString) == True:
                 dialog.Update(6, "Subscribed to history feed. Waiting for data")
 
                 while newupd == None:
@@ -753,6 +811,157 @@ class MyFrame(wx.Frame):
         ccfuncs.ParseCurrentCostXML(ccdb, newupd)
         # 
         return True
+
+
+
+    #####################
+    # 
+    # drawing live graphs
+    # 
+    #  as with history, two options for getting data - directly from a COM port,
+    #   or remotely via MQTT
+    # 
+    #  the functions will create a new tab to display the graph, and kick off a 
+    #   new thread to keep it up to date
+
+    def displayLiveConnectFailure(self, message):
+        self.f0.Check(self.MENU_LIVE, False)
+        self.f0.Check(self.MENU_MQTT_LIVE, False)
+        errdlg = wx.MessageDialog(self,
+                                  message,
+                                  'CurrentCost - live tab',
+                                  style=(wx.OK | wx.ICON_EXCLAMATION))
+        result = errdlg.ShowModal()
+        errdlg.Destroy()
+
+        
+    # connecting directly 
+    def onConnectLive (self, event):
+        global livedataagent, plotter, ccdb 
+
+        if self.liveaxes == None:
+            self.liveaxes = plotter.add('live').gca()
+
+        if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
+            # disconnect
+            livedataagent.disconnect()
+            # update the GUI to show what the user has selected
+            self.f0.Check(self.MENU_LIVE, False)
+            self.f0.Check(self.MENU_MQTT_LIVE, False)
+        else:
+            # disconnect any existing connection
+            livedataagent.disconnect()
+
+            #
+            # get information from the user required to establish the connection
+            #  prefill with setting from database if possible
+            #
+
+            dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
+            lastcom = ccdb.RetrieveSetting("comport")
+            if lastcom:
+                dlg.SetValue(lastcom)
+            if dlg.ShowModal() == wx.ID_OK:
+                newcom = dlg.GetValue()
+                if lastcom != newcom:
+                    ccdb.StoreSetting("comport", newcom)
+
+                # create a new connection
+                livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
+                                      self.liveaxes, 
+                                      None, None, 
+                                      newcom)                
+                
+                # update the GUI to show what the user has selected
+                self.f0.Check(self.MENU_LIVE, True)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
+            dlg.Destroy()
+
+
+
+    # connecting via MQTT
+    def onMQTTConnectLive (self, event):
+        global livedataagent, plotter, ccdb
+
+        if self.IsMQTTSupportAvailable():
+            if self.liveaxes == None:
+                self.liveaxes = plotter.add('live').gca()
+
+            if livedataagent.connectionType == livedataagent.CONNECTION_MQTT:
+                # disconnect
+                livedataagent.disconnect()
+                # update the GUI to show what the user has selected
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
+            else:
+                # disconnect any existing connection
+                livedataagent.disconnect()
+
+                #
+                # get information from the user required to establish the connection
+                #  prefill with setting from database if possible
+                #
+        
+                # IP address
+        
+                dlg = wx.TextEntryDialog(self, 
+                                         'Specify the IP address or hostname of a message broker to connect to:',
+                                         'CurrentCost')
+                lastipaddr = ccdb.RetrieveSetting("mqttipaddress")
+                if lastipaddr:
+                    dlg.SetValue(lastipaddr)
+                else:
+                    dlg.SetValue('204.146.213.96')
+                if dlg.ShowModal() != wx.ID_OK:
+                    dlg.Destroy()
+                    return False
+                ipaddr = dlg.GetValue()
+                if lastipaddr != ipaddr:
+                    ccdb.StoreSetting("mqttipaddress", ipaddr)
+                dlg.Destroy()
+        
+                # topic string
+        
+                dlg = wx.TextEntryDialog(self, 
+                                         'Specify the topic string to subscribe to:',
+                                         'CurrentCost')
+                lasttopicstring = ccdb.RetrieveSetting("mqttlivetopicstring")
+                if lasttopicstring:
+                    dlg.SetValue(lasttopicstring)
+                else:
+                    dlg.SetValue('PowerMeter/CC/YourUserNameHere')
+                if dlg.ShowModal() != wx.ID_OK:
+                    dlg.Destroy()
+                    return False
+                topicString = dlg.GetValue()
+                if lasttopicstring != topicString:
+                    ccdb.StoreSetting("mqttlivetopicstring", topicString)
+                dlg.Destroy()
+
+                # create a new connection
+                livedataagent.connect(self, livedataagent.CONNECTION_MQTT, 
+                                      self.liveaxes, 
+                                      ipaddr, topicString, 
+                                      None)                
+                
+                # update the GUI to show what the user has selected
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, True)            
+        else:
+            dlg = wx.MessageDialog(self,
+                                   "Connecting via MQTT requires the use of a third-party module. "
+                                   "This module is not present.\n\n"
+                                   "Please copy the MQTT library to the directory where the CurrentCost app is stored then try this again",
+                                   'CurrentCost', 
+                                   style=(wx.OK | wx.ICON_EXCLAMATION))
+            dlg.ShowModal()        
+            dlg.Destroy()
+
+
+
+        return
+
+
 
 
     #
