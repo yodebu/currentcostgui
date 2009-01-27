@@ -957,7 +957,9 @@ class MyFrame(wx.Frame):
             dlg.ShowModal()        
             dlg.Destroy()
 
-
+            # update the GUI to show what the user has selected
+            self.f0.Check(self.MENU_LIVE, False)
+            self.f0.Check(self.MENU_MQTT_LIVE, False)  
 
         return
 
