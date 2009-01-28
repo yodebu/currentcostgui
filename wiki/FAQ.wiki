@@ -32,6 +32,9 @@ http://currentcostgui.googlecode.com/files/devicemanager.png
 
 The [http://code.google.com/p/currentcostgui/wiki/Prerequisites prereqs page] includes more info on config for the serial driver.
 ----
+== "Where do I get the MQTT library the app talks about?"
+Please see [MQTT the documentation about the MQTT feature]
+----
 == "What's the 'Sync with web' thing about?" ==
 Please see the [CompareYourData detailed doc about this feature]
 ----
