@@ -324,30 +324,45 @@ class CurrentCostLiveData():
 
 
 
+    #
+    # stop and start the download and display of national electricity demand
+    #  data from the National Grid
+    # 
     def toggleNationalGridDemandData(self, livegraphaxes):
 
         if self.showNationalGridDemand == False:
+            # we are not currently showing national demand data, but we 
+            #  are about to start
+            self.showNationalGridDemand = True
+
+            # if this is a new graph, we need to make a note of the 
+            #  far-left x-axis value for zooming purposes
             if self.starttime == None:
                 self.starttime = datetime.datetime.now()
 
-            self.showNationalGridDemand = True
-
+            # store a handle to the parent graph if required (only if we 
+            #  are viewing National Grid data without personal CurrentCost data)
             if self.livegraph == None:
                 self.livegraph = livegraphaxes
 
+            # if we are re-starting an existing graph, we don't need to create
+            #  the axes to draw on.
+            # otherwise, we create them now
             if self.livegraphNGDemand == None:
                 self.livegraphNGDemand = self.livegraph.twinx()
                 self.livegraphNGDemand.set_ylabel('UK electricity demand (MW)')
 
-            self.livegraphNGDemand.set_autoscale_on = False
-
+            # create a background thread that will poll the National Grid
+            #  website and return national electricity demand values
             self.ngdClient = NationalGridUpdateThread(self)
             self.ngdClient.start()
         else:
-            self.ngdClient.stopUpdates()
+            # we are currently showing national demand data, but we are 
+            #   about to stop
             self.showNationalGridDemand = False
-          
 
+            # stop the background thread
+            self.ngdClient.stopUpdates()
 
 
 

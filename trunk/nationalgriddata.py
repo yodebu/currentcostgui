@@ -36,10 +36,13 @@ class NationalGridDataSource():
     # get the HTML for the realtime demand data webpage
     # 
     def DownloadRealtimeHTML(self):
-        post_req = urllib2.Request('http://www.nationalgrid.com/ngrealtime/realtime/systemdata.aspx')
-        post_resp = urllib2.urlopen(post_req)
-        post_resp_body = post_resp.read()
-        return post_resp_body
+        try:
+            post_req = urllib2.Request('http://www.nationalgrid.com/ngrealtime/realtime/systemdata.aspx')
+            post_resp = urllib2.urlopen(post_req)
+            post_resp_body = post_resp.read()
+            return post_resp_body
+        except Exception, exc:
+            return 'Unable to download HTML from National Grid'
 
     #
     # get the demand (int) and frequency (float) values from the provided HTML
