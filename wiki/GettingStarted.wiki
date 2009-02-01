@@ -21,7 +21,7 @@ You can get a [http://code.google.com/p/currentcostgui/wiki/Prerequisites list o
 The app stores your history data on your local computer, so the first time you run it you will be asked where you want to store that database file. Future runs can just default to re-opening that database again.
 
 = Step 4 - Connect to your CurrentCost meter=
-Options -> Connect 
+Download data -> Download history (connect directly)
 
 Then tell it the COM port number to use. (e.g. "COM3" if you're on Windows) 
 
