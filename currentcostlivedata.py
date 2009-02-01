@@ -26,6 +26,7 @@ from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatt
 from threading import Thread
 
 from currentcostcomlive import CurrentCostSerialConnection
+from nationalgriddata   import NationalGridDataSource
 
 #
 # Displays a graph showing live CurrentCost data. 
@@ -41,8 +42,15 @@ class CurrentCostLiveData():
 
     connectionType = CONNECTION_NONE
 
-    # graph where the live data is shown
+    #
+    # which other live feeds should be shown?
+    showNationalGridDemand = False
+    showNationalGridFrequency = False
+
+    # graphs where the live data is shown
     livegraph = None
+    livegraphNGDemand    = None
+    livegraphNGFrequency = None
 
     #
     # handle to the GUI where the graph is shown
@@ -55,10 +63,16 @@ class CurrentCostLiveData():
     ccdates = []
     ccreadings = []
 
+    ngdemanddates = []
+    ngdemandreadings = []
+
+    ngfreqdates = []
+    ngfreqreadings = []
+
     # background threads actually getting the live data
     mqttClient = None
     comClient  = None
-
+    ngdClient  = None
 
     #
     # called when another CurrentCost reading is available
@@ -123,19 +137,22 @@ class CurrentCostLiveData():
         else:
             print 'Unsupported connection type'
 
+
     # 
     # called to disconnect from the CurrentCost meter
     # 
     #  existing graph should be left untouched
     # 
     def disconnect(self):
-        # disconnect from MQTT 
         if self.connectionType == self.CONNECTION_MQTT:
             if self.mqttClient != None:
                 self.mqttClient.Disconnect()
         elif self.connectionType == self.CONNECTION_SERIAL:
             if self.comClient != None:
                 self.comClient.Disconnect()
+
+        if self.ngdClient != None:
+            self.ngdClient.stopUpdates()
 
         # re-initialise variables
         self.connectionType = self.CONNECTION_NONE
@@ -149,6 +166,84 @@ class CurrentCostLiveData():
     def exitOnError(self, errmsg):
         self.disconnect()
         self.guicallback.displayLiveConnectFailure(errmsg)
+
+
+    #
+    # called when another National Grid data is available
+    # 
+    #  the new reading is appended to the set, and the graph is refreshed
+    # 
+    def updateNationalGridGraph(self, ngdemand, ngfrequency):
+
+        if self.showNationalGridDemand == True:
+            try:
+                # store the new reading
+                self.ngdemanddates.append(datetime.datetime.now())
+                self.ngdemandreadings.append(ngdemand)
+    
+                # update the graph
+                self.livegraphNGDemand.plot_date(self.ngdemanddates, 
+                                                 self.ngdemandreadings,
+                                                 'b-')
+    
+                # format the dates on the x-axis
+                self.livegraphNGDemand.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
+    
+                # rotate the axes labels
+                for label in self.livegraphNGDemand.get_xticklabels():
+                    label.set_picker(True)
+                    label.set_rotation(90)
+
+                # redraw the (original) graph - to sync axes
+                self.livegraph.figure.canvas.draw()
+            except Exception, e:
+                print str(e)
+                print str(e.message)
+
+        if self.showNationalGridFrequency == True:
+            try:
+                # store the new reading
+                self.ngfreqdates.append(datetime.datetime.now())
+                self.ngfreqreadings.append(ngfrequency)
+    
+                # update the graph
+                self.livegraphNGFrequency.plot_date(self.ngfreqdates, 
+                                                    self.ngfreqreadings,
+                                                    'g-')
+    
+                # format the dates on the x-axis
+                self.livegraphNGFrequency.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
+    
+                # rotate the axes labels
+                for label in self.livegraphNGFrequency.get_xticklabels():
+                    label.set_picker(True)
+                    label.set_rotation(90)
+
+                # redraw the (original) graph - to sync axes
+                self.livegraph.figure.canvas.draw()
+            except Exception, e:
+                print str(e)
+                print str(e.message)
+
+
+    def toggleNationalGridDemandData(self):
+
+        if self.showNationalGridDemand == False:
+            self.showNationalGridDemand = True
+
+            self.livegraphNGDemand = self.livegraph.twinx()
+            self.livegraphNGDemand.set_ylabel('UK electricity demand (MW)')
+
+            self.ngdClient = NationalGridUpdateThread(self)
+            self.ngdClient.start()
+        else:
+            self.ngdClient.stopUpdates()
+            self.showNationalGridDemand = False
+          
+
+
+
+
 
 
 # a background thread used to create an MQTT connection
@@ -174,3 +269,21 @@ class SerialUpdateThread(Thread):
     def run(self):
         res = self.comClient.EstablishConnection(self.comport, 
                                                  self.graphhandle)
+
+# a background thread used to download National Grid data
+class NationalGridUpdateThread(Thread):
+    disconnect = False
+    ngdata = None
+    def __init__(self, liveagent):
+        Thread.__init__(self)
+        self.graphhandle = liveagent
+        self.disconnect = False
+        self.ngdata = NationalGridDataSource()
+    def stopUpdates(self):
+        self.disconnect = True
+    def run(self):
+        while self.disconnect == False:
+            nghtml = self.ngdata.DownloadRealtimeHTML()
+            demand, freq = self.ngdata.ParseRealtimeHTML(nghtml)
+            self.graphhandle.updateNationalGridGraph(demand, freq)
+        
