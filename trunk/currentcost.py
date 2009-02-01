@@ -114,6 +114,8 @@ from matplotlib.text import Text
 #                                     from a remote CurrentCost meter via MQTT
 #   currentcostcomlive.py        - downloads live data for the live graph 
 #                                     from a CurrentCost meter
+#   nationalgriddata.py          - downloads live national electricity usage 
+#                                     data from the National Grid realtime feed
 # 
 ############################################################################
 
@@ -200,6 +202,8 @@ class MyFrame(wx.Frame):
         MENU_MANUAL  = wx.NewId()
         MENU_MATPLOT = wx.NewId()
         MENU_HELPDOC = wx.NewId()
+        MENU_NGDEMAND = wx.NewId()
+        MENU_NGFREQ  = wx.NewId()
 
         menuBar = wx.MenuBar()
 
@@ -209,6 +213,9 @@ class MyFrame(wx.Frame):
         self.f0.AppendSeparator()
         self.f0.Append(self.MENU_LIVE,      "Show live data (connect directly)...", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
         self.f0.Append(self.MENU_MQTT_LIVE, "Show live data (connect via MQTT)...", "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
+        self.f0.AppendSeparator()
+        self.f0.Append(MENU_NGDEMAND, "Show live national electricity demand...", "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
+        #self.f0.Append(MENU_NGFREQ, "Show live National Grid frequency...", "Show live data from the National Grid website showing the grid frequency", kind=wx.ITEM_CHECK)
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -276,6 +283,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
         self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
         self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
+        self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=MENU_NGDEMAND)
+        self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=MENU_NGFREQ)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
@@ -305,7 +314,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.16"
+        info.Version = "0.9.17"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -354,7 +363,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.16":
+        elif latestversion != "0.9.17":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -964,6 +973,30 @@ class MyFrame(wx.Frame):
         return
 
 
+    #########################################
+    # 
+    # National Grid data
+    # 
+    #  show National Grid realtime data on the live graph
+    # 
+
+    def onNationalGridDemand(self, event):
+        global livedataagent, plotter, ccdb 
+
+        if self.liveaxes == None:
+            self.liveaxes = plotter.add('live').gca()
+
+        livedataagent.toggleNationalGridDemandData()        
+        return
+
+    def onNationalGridFreq(self, event):
+        global livedataagent, plotter, ccdb 
+
+        if self.liveaxes == None:
+            self.liveaxes = plotter.add('live').gca()
+
+        livedataagent.toggleNationalGridDemandFrequency()
+        return
 
 
     #
