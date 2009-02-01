@@ -102,11 +102,13 @@ class CurrentCostMQTTSubscriber(MqttSubscriber):
     #  and pass it back to the GUI for displaying
     def messageReceived(self, message):
         MqttSubscriber.messageReceived(self, message)
+        ccreading = None
         try:
             ccreading = float(message.data)
-            self.guicallback.updateGraph(message.data)
         except:            
             self.guicallback.exitOnError('Unable to parse reading from meter: ' + str(message.data))
+            return        
+        self.guicallback.updateGraph(message.data)
 
     # disconnect when complete
     def endconnection(self):
