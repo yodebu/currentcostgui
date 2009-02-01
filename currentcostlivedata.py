@@ -74,35 +74,149 @@ class CurrentCostLiveData():
     comClient  = None
     ngdClient  = None
 
+
+    starttime = None
+
+
+
+    #
+    # redraw all active graphs
+    # 
+    def redrawGraph(self):
+
+        #
+        # Step 1:
+        #   update the graph plots
+        # 
+        if len(self.ccdates) > 0:
+            try:
+                self.livegraph.plot_date(self.ccdates, 
+                                         self.ccreadings,
+                                         'r-')
+            except Exception, e:
+                print 'DEBUG: error - failed to plot data on livegraph'
+                print e
+                print str(e)
+                print str(e.message)
+                return False
+        
+        if self.livegraphNGDemand != None and len(self.ngdemanddates) > 0:
+            try:
+                # update the graph
+                self.livegraphNGDemand.plot_date(self.ngdemanddates, 
+                                                 self.ngdemandreadings,
+                                                 'b-')
+            except Exception, e:
+                print 'DEBUG: error - failed to plot data on national grid graph'
+                print str(e)
+                print str(e.message)
+                return False
+        
+        #
+        # Step 2: 
+        #   disable auto-scaling
+        #    there is a bug when use twinx to plot data series for multiple y
+        #    axes on a single graph. the scaling sometimes gets out of sync, so
+        #    you get two x-axes overlaid on each other, with slightly different
+        #    zoom factors
+        # 
+        #    so we scale all x-axes manually
+        # 
+        if len(self.ccdates) > 0:
+            self.livegraph.set_autoscale_on = False
+        if self.livegraphNGDemand != None:
+            self.livegraphNGDemand.set_autoscale_on = False
+        
+        #
+        # Step 3:
+        #   rotate labels on x-axis
+        #    makes the timestamps fit better when rendered vertically
+        # 
+        try:
+            for label in self.livegraph.get_xticklabels():
+                label.set_rotation(90)
+        except Exception, e:
+            print 'DEBUG: error - failed to rotate axis labels on live graph'
+            print str(e)
+            print str(e.message)
+            return False
+        if self.livegraphNGDemand != None:
+            try:
+                for label in self.livegraphNGDemand.get_xticklabels():
+                    label.set_rotation(90)
+            except Exception, e:
+                print 'DEBUG: error - failed to rotate axis labels on NG graph'
+                print str(e)
+                print str(e.message)
+                return False
+        
+        #
+        # Step 4:
+        #   manually zoom all graphs to same scale - keeping x-axes in sync
+        # 
+        endtime = datetime.datetime.now()
+        self.livegraph.set_xlim(xmin=self.starttime, xmax=endtime)
+        if self.showNationalGridDemand == True:
+            self.livegraphNGDemand.set_xlim(xmin=self.starttime, xmax=endtime)
+        
+        #
+        # Step 5:
+        #   format x-axis labels
+        #    don't know how to switch one of these off, so we create multiple
+        #    identical axes, and try to ignore the fact that you can see it's
+        #    slightly thicker as drawn twice in the same place!
+        try:
+            # format the dates on the x-axis
+            if len(self.ccdates) > 0:
+                self.livegraph.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
+                self.livegraph.xaxis.set_minor_formatter(DateFormatter('%H:%M.%S'))
+            if self.livegraphNGDemand != None:
+                self.livegraphNGDemand.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
+                self.livegraphNGDemand.xaxis.set_minor_formatter(DateFormatter('%H:%M.%S'))
+        except Exception, e:
+            print 'DEBUG: error - failed to assign xaxis formatters'
+            print str(e)
+            print str(e.message)
+            return False
+        
+        #
+        # Step 6:
+        #   final step - redraw all active graphs
+        # 
+        try:
+            self.livegraph.figure.canvas.draw()
+        except Exception, e:
+            print 'DEBUG: error - failed to redraw live canvas'
+            print str(e)
+            print str(e.message)
+            return False
+        if self.livegraphNGDemand != None:
+            try:
+                self.livegraphNGDemand.figure.canvas.draw()
+            except Exception, e:
+                print 'DEBUG: error - failed to redraw NG canvas'
+                print str(e)
+                print str(e.message)
+                return False
+        
+        #
+        # graph redraw complete
+        return True
+
+
     #
     # called when another CurrentCost reading is available
     # 
     #  the new reading is appended to the set, and the graph is refreshed
     # 
     def updateGraph(self, ccreading):
-        try:
-            # store the new reading
-            self.ccdates.append(datetime.datetime.now())
-            self.ccreadings.append(ccreading)
+        # store the new reading
+        self.ccdates.append(datetime.datetime.now())
+        self.ccreadings.append(ccreading)
 
-            # update the graph
-            self.livegraph.plot_date(self.ccdates, 
-                                     self.ccreadings,
-                                     'r-')
+        # redraw the graph with the new reading
+        self.redrawGraph()
 
-            # format the dates on the x-axis
-            self.livegraph.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
-
-            # rotate the axes labels
-            for label in self.livegraph.get_xticklabels():
-                label.set_picker(True)
-                label.set_rotation(90)
-
-            # redraw the graph
-            self.livegraph.figure.canvas.draw()
-        except Exception, e:
-            print str(e)
-            print str(e.message)
 
     #
     # called to create a connection to the CurrentCost meter
@@ -117,6 +231,10 @@ class CurrentCostLiveData():
         self.livegraph.cla()
         self.livegraph.set_ylabel('kWh')
         self.livegraph.grid(True)
+        self.livegraph.set_autoscale_on = False
+
+        if self.starttime == None:
+            self.starttime = datetime.datetime.now()
 
         if self.connectionType == self.CONNECTION_MQTT:
             self.ipaddress = ipaddr
@@ -176,63 +294,52 @@ class CurrentCostLiveData():
     def updateNationalGridGraph(self, ngdemand, ngfrequency):
 
         if self.showNationalGridDemand == True:
-            try:
-                # store the new reading
-                self.ngdemanddates.append(datetime.datetime.now())
-                self.ngdemandreadings.append(ngdemand)
-    
-                # update the graph
-                self.livegraphNGDemand.plot_date(self.ngdemanddates, 
-                                                 self.ngdemandreadings,
-                                                 'b-')
-    
-                # format the dates on the x-axis
-                self.livegraphNGDemand.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
-    
-                # rotate the axes labels
-                for label in self.livegraphNGDemand.get_xticklabels():
-                    label.set_picker(True)
-                    label.set_rotation(90)
+            # store the new National Grid data reading
+            self.ngdemanddates.append(datetime.datetime.now())
+            self.ngdemandreadings.append(ngdemand)
 
-                # redraw the (original) graph - to sync axes
-                self.livegraph.figure.canvas.draw()
-            except Exception, e:
-                print str(e)
-                print str(e.message)
+            # if we are also plotting live CurrentCost readings, we allow the 
+            #  CurrentCost update function to redraw the graph (otherwise, 
+            #  having two threads redrawing the graph at the same time tends to
+            #  screw matplotlib up). 
+            # if we are only plotting National Grid data, then we need to redraw
+            #  the graph now
+            if self.connectionType == self.CONNECTION_NONE:
+                self.redrawGraph()
 
         if self.showNationalGridFrequency == True:
-            try:
-                # store the new reading
-                self.ngfreqdates.append(datetime.datetime.now())
-                self.ngfreqreadings.append(ngfrequency)
+            # store the new reading
+            self.ngfreqdates.append(datetime.datetime.now())
+            self.ngfreqreadings.append(ngfrequency)
     
-                # update the graph
-                self.livegraphNGFrequency.plot_date(self.ngfreqdates, 
-                                                    self.ngfreqreadings,
-                                                    'g-')
-    
-                # format the dates on the x-axis
-                self.livegraphNGFrequency.xaxis.set_major_formatter(DateFormatter('%H:%M.%S'))
-    
-                # rotate the axes labels
-                for label in self.livegraphNGFrequency.get_xticklabels():
-                    label.set_picker(True)
-                    label.set_rotation(90)
-
-                # redraw the (original) graph - to sync axes
-                self.livegraph.figure.canvas.draw()
-            except Exception, e:
-                print str(e)
-                print str(e.message)
+            # if we are also plotting live CurrentCost readings, we allow the 
+            #  CurrentCost update function to redraw the graph (otherwise, 
+            #  having two threads redrawing the graph at the same time tends to
+            #  screw matplotlib up). 
+            # if we are only plotting National Grid data, then we need to redraw
+            #  the graph now
+            if self.connectionType == self.CONNECTION_NONE:
+                self.redrawGraph()
 
 
-    def toggleNationalGridDemandData(self):
+
+
+    def toggleNationalGridDemandData(self, livegraphaxes):
 
         if self.showNationalGridDemand == False:
+            if self.starttime == None:
+                self.starttime = datetime.datetime.now()
+
             self.showNationalGridDemand = True
 
-            self.livegraphNGDemand = self.livegraph.twinx()
-            self.livegraphNGDemand.set_ylabel('UK electricity demand (MW)')
+            if self.livegraph == None:
+                self.livegraph = livegraphaxes
+
+            if self.livegraphNGDemand == None:
+                self.livegraphNGDemand = self.livegraph.twinx()
+                self.livegraphNGDemand.set_ylabel('UK electricity demand (MW)')
+
+            self.livegraphNGDemand.set_autoscale_on = False
 
             self.ngdClient = NationalGridUpdateThread(self)
             self.ngdClient.start()
@@ -287,3 +394,4 @@ class NationalGridUpdateThread(Thread):
             demand, freq = self.ngdata.ParseRealtimeHTML(nghtml)
             self.graphhandle.updateNationalGridGraph(demand, freq)
         
+

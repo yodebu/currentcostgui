@@ -986,7 +986,7 @@ class MyFrame(wx.Frame):
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
 
-        livedataagent.toggleNationalGridDemandData()        
+        livedataagent.toggleNationalGridDemandData(self.liveaxes)
         return
 
     def onNationalGridFreq(self, event):
