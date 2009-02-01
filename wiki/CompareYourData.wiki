@@ -16,7 +16,7 @@ If you have any concerns at all, you might want to [http://code.google.com/p/cur
 = Set-up =
 In order to be able to use this feature, you will need [https://www.google.com/accounts a Google user account].
 
-Then you will need to visit the [http://currentcost.appspot.com/profile CurrentCost Profiles site] to create yourself an account, and add yourself to a system.
+Then you will need to visit the [http://currentcost.appspot.com/profile CurrentCost Profiles site] to create yourself an account, and add yourself to the system.
 
 Finally, you need to visit [http://currentcost.appspot.com/groups/list the groups list] to choose which of the groups is appropriate to you. You can join as many groups as you like, and if you can't see a group that is suitable, create a new one!
 
