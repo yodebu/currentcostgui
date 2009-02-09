@@ -110,7 +110,6 @@ class CurrentCostMQTTSubscriber(MqttSubscriber):
 
     def messageReceived(self, message):
         global receivedHours, receivedDays, receivedMonths, workComplete, ccUpdate
-
         MqttSubscriber.messageReceived(self, message)
 
         dataType = str(message.topicName[len(self.getTopic()) - 1:len(message.topicName)])

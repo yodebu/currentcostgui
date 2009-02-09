@@ -27,6 +27,10 @@ from string import atoi, atof
 # It's a Python object representation of the XML - as described here:
 # http://cumbers.wordpress.com/2008/05/07/breakdown-of-currentcost-xml-output/
 #
+# The need for this class was reduced with the creation of the new parser 
+# class (currentcostparser.py). It's only now used as a way of passing data back
+# from the MQTT class (currentcostmqtt.py).
+# 
 #  Dale Lane (http://dalelane.co.uk/blog)
 # 
 class CurrentCostUpdate():

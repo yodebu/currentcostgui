@@ -1,0 +1,205 @@
+#
+# CurrentCost parsing
+#
+#    Copyright (C) 2009  Dale Lane
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#  The author of this code can be contacted at Dale.Lane@gmail.com
+#    Any contact about this application is warmly welcomed.
+#
+
+import datetime
+import xml.parsers.expat
+
+# this class lets you store your CurrentCost data
+from currentcostdb          import CurrentCostDB
+
+# this class converts relative timestamps into absolute timestamps
+from currentcostdataconvert import CurrentCostDataConverter
+
+
+#
+# CurrentCost XML parser written to handle CC128 data
+# 
+# Note that this is provided to help get you started, but it lacks careful
+#  error-handling or proper documentation.
+#
+# If you have any questions about it, or even just find it useful, please do
+#  let me know - dale.lane@gmail.com
+#
+#
+#  Dale Lane (http://dalelane.co.uk/blog)
+#
+class CurrentCostDataParser:
+
+    ###############################################################################
+    #
+    # parser variables
+    # 
+    ###############################################################################
+
+    # multi-dimensional array used to store a representation of CurrentCost XML
+    currentcoststruct = {}
+    # stack which is used to keep track of current pointer into the CurrentCost XML
+    currentpointer = []
+    # how many elements have we seen called <data>?
+    data_element_count = 0
+
+    # used to translate relative timestamps in CurrentCost data into timestamps
+    converter = CurrentCostDataConverter()
+
+
+    ###############################################################################
+    #
+    # data structure functions
+    # 
+    ###############################################################################
+
+    # Internal function used to support the parser.
+    #
+    # Inserts new data into the multi-dimensional array
+    # 
+    # Inputs:
+    #   structure - the multi-dimensional array 
+    #   ptr - a stack which identifies the array element to add the data to
+    #           for example:
+    #          e.g. <xml><animal><canine><dog>Pluto</dog></canine></animal></xml>
+    #           will result in a stack that looks like 
+    #             ['xml','animal','canine','dog']
+    #          which is interpreted as a request to add newdata to
+    #             structure['xml']['animal']['canine']['dog']
+    #   newdata - data to insert
+    # 
+    # Outputs:
+    #   returns a handle to the element inserted into the array
+    # 
+    def insertIntoStructure(self, structure, ptr, newdata):
+        laststructitem = len(structure) - 1
+        parent = ptr
+        for i, element in enumerate(structure):
+            if i == laststructitem:
+                parent[element] = newdata
+            else:
+                if element not in parent:
+                    parent[element] = {}
+            parent = parent[element]
+        return parent
+
+
+    ###############################################################################
+    #
+    # XML parsing functions 
+    # 
+    ###############################################################################
+    
+    # Internal function used to support the parser.
+    #
+    # start of an XML element. keep track of where we are in the XML tree
+    def start_element(self, name, attrs):    
+        element_name = str(name)
+        if element_name == 'data':
+            # we have treat <data> as a special case, because the CurrentCost XML
+            # format has multiple different elements at the same level in the XML
+            # tree all called 'data'. 
+            # we need to be able to distinguish between them, so we append a unique
+            # number to the name
+            # this currently has the effect of resulting in matching with the sensor
+            # value 
+            #   e.g. <data4><sensor>4</sensor></data4>
+            # but for now we will treat this as a happy coincidence and avoid 
+            # relying on it too heavily, in case this is not always the case
+            element_name = 'data' + str(self.data_element_count)
+            self.data_element_count += 1
+            self.currentpointer.append(element_name)
+        else:
+            self.currentpointer.append(element_name)
+    # Internal function used to support the parser.
+    #
+    # end of an XML element. keep track of where we are in the XML tree
+    def end_element(self, name):
+        self.currentpointer.pop()
+    # Internal function used to support the parser.
+    #
+    # XML element contains data - insert into the structure we are creating to 
+    #   represent the XML data
+    def char_data(self, data):
+        ptr = self.insertIntoStructure(self.currentpointer, 
+                                       self.currentcoststruct, 
+                                       data)
+
+    # External function used to invoke the parser.
+    #
+    # Parses the provided line of CurrentCost XML data, and returns a 
+    # multi-dimensional array representation of the data
+    # 
+    # Inputs:
+    #   xmldata - line of XML data
+    # 
+    # Outputs:
+    #   handle to the internal CurrentCost data structure
+    # 
+    def parseCurrentCostXML(self, xmldata):
+        try:
+            p = xml.parsers.expat.ParserCreate()
+            p.StartElementHandler = self.start_element
+            p.EndElementHandler = self.end_element
+            p.CharacterDataHandler = self.char_data
+            p.Parse(xmldata, 1)
+        except xml.parsers.expat.ExpatError:
+            print("Received incomplete or invalid data from CurrentCost meter.")
+        return self.currentcoststruct
+
+
+    ###############################################################################
+    #
+    # time conversion functions
+    # 
+    ###############################################################################
+
+    # External function used to invoke the translation of CurrentCost data into
+    #  an data with absolute timestamps, and store in the provided data store
+    # 
+    # Selects internal functions based on the CurrentCost software version id
+    #  stored in the CurrentCost data. 
+    # 
+    # These internal functions have been moved to a separate class, because 
+    #  they're huge! And fairly dull.
+    # 
+    # Inputs:
+    #   ccdb - class where data should be stored
+    # 
+    # Outputs:
+    #   None
+    # 
+    def storeTimedCurrentCostData(self, ccdb):
+        # prepare a reference timestamp
+        today = datetime.datetime.now()
+        
+        # different versions of the CurrentCost meter stored the version number
+        #  in different places - so this if...else sequence is a little over-complex
+        if 'src' in self.currentcoststruct['msg']:
+            if 'sver' in self.currentcoststruct['msg']['src']:
+                # version 2 CurrentCost meters                
+                if 'hist' in self.currentcoststruct['msg']:
+                    self.converter.storeTimedCurrentCostDatav2(today, ccdb, self.currentcoststruct['msg']['hist'])
+            elif self.currentcoststruct['msg']['src'] == 'CC128-v0.09':
+                # CC128 CurrentCost meters
+                if 'hist' in self.currentcoststruct['msg']:
+                    # for now, only looking at data on sensor 0 - the 'whole house' sensor
+                    #  to get different sensor data, change the 'if' statement below
+                    for dataobj in self.currentcoststruct['msg']['hist']:
+                        if self.currentcoststruct['msg']['hist'][dataobj]['sensor'] == '0':
+                            self.converter.storeTimedCurrentCostDatavcc128(today, ccdb, self.currentcoststruct['msg']['hist'][dataobj])
+
