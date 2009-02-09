@@ -34,7 +34,6 @@ import matplotlib as mpl
 import numpy as np
 import datetime
 import pylab
-import xml.parsers.expat
 import math
 import time
 import serial
@@ -45,10 +44,11 @@ from googleappengine           import GoogleAppEngine
 from googleappengine           import GroupData as CurrentCostGroupData
 from currentcostgraphs         import Plot, PlotNotebook, TextPage
 from currentcostdatafunctions  import CurrentCostDataFunctions
-from currentcostdata           import CurrentCostUpdate
 from currentcostvisualisations import CurrentCostVisualisations
 from currentcostdb             import CurrentCostDB
 from currentcostlivedata       import CurrentCostLiveData
+from currentcostparser         import CurrentCostDataParser
+
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx as Toolbar
@@ -78,6 +78,9 @@ from matplotlib.text import Text
 #         Seeking feedback                    http://dalelane.co.uk/blog/?p=298
 #         Adding web services functions       http://dalelane.co.uk/blog/?p=305
 #         Seeking testers for web services    http://dalelane.co.uk/blog/?p=307
+#         Setting personal targets            http://dalelane.co.uk/blog/?p=333
+#         Adding webservice showing all users http://dalelane.co.uk/blog/?p=434
+#         Updating the parser                 http://dalelane.co.uk/blog/?p=456
 # 
 #     Providing support
 #         http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui
@@ -98,6 +101,10 @@ from matplotlib.text import Text
 #                                     GUI's menus and their actions
 #   currentcostdata.py           - represents data contained in a single 
 #                                     update from a CurrentCost meter
+#   currentcostparser.py         - CurrentCost XML data parser used when 
+#                                     receiving data over serial connection
+#   currentcostdataconvert.py    - used by XML parser to convert relative 
+#                                     time descriptions into absolute
 #   currentcostdatafunctions.py  - converts the relative description of usage
 #                                     in a CurrentCost update into absolute
 #   currentcostdb.py             - sqlite DB to persist CurrentCost usage 
@@ -146,8 +153,8 @@ plotter = None
 # connection to the database used to store CurrentCost data
 ccdb   = CurrentCostDB()
 
-# used to represent a CurrentCost update downloaded from the device
-newupd = CurrentCostUpdate()
+# create the parser class
+myparser = CurrentCostDataParser()
 
 # class to maintain a live data graph
 livedataagent = CurrentCostLiveData()
@@ -681,7 +688,7 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onMQTTSubscribe (self, event):
-        global ccdb, newupd
+        global ccdb, mqttupd
 
         if self.IsMQTTSupportAvailable():
             # used to provide an MQTT connection to a remote CurrentCost meter
@@ -729,7 +736,7 @@ class MyFrame(wx.Frame):
             dlg.Destroy()
 
 
-            newupd = None
+            mqttupd = None
             maxitems = 11
             dialog = wx.ProgressDialog ('CurrentCost', 
                                         'Connecting to message broker to receive published CurrentCost data', 
@@ -739,16 +746,19 @@ class MyFrame(wx.Frame):
             if mqttClient.EstablishConnection(self, dialog, maxitems, ipaddr, topicString) == True:
                 dialog.Update(6, "Subscribed to history feed. Waiting for data")
 
-                while newupd == None:
-                    time.sleep(1)
-                    dialog.Update(7, "Waiting for data")
+                while mqttupd == None:
+                    time.sleep(1)                    
+                    (tocontinue, toskip) = dialog.Update(7, "Waiting for data")
+                    if tocontinue == False:
+                        dialog.Destroy()
+                        return
 
                 dialog.Update(8, "Received data from message broker")
 
                 ccfuncs = CurrentCostDataFunctions()
 
                 dialog.Update(9, "Parsing data from message broker")
-                ccfuncs.ParseCurrentCostXML(ccdb, newupd)
+                ccfuncs.ParseCurrentCostXML(ccdb, mqttupd)
 
                 dialog.Update(10, "Drawing graphs")
                 drawMyGraphs(self, dialog, False)
@@ -768,8 +778,8 @@ class MyFrame(wx.Frame):
 
 
     def onMQTTSubscribeCallback (self, newccupdate):
-        global newupd
-        newupd = newccupdate
+        global mqttupd
+        mqttupd = newccupdate
 
 
     #
@@ -798,7 +808,7 @@ class MyFrame(wx.Frame):
     # manually enter XML for parsing - for test use only
     
     def getDataFromXML(self, event):
-        global newupd, ccdb
+        global myparser, ccdb
         # 
         line = ""
         dlg = wx.TextEntryDialog(self, 'Enter the XML:', 'CurrentCost')
@@ -806,18 +816,17 @@ class MyFrame(wx.Frame):
             line = dlg.GetValue()
         dlg.Destroy()
 
-        try:
-            p = xml.parsers.expat.ParserCreate()
-            p.StartElementHandler = start_element
-            p.EndElementHandler = end_element
-            p.CharacterDataHandler = char_data
-            p.Parse(line, 1)
-        except xml.parsers.expat.ExpatError:
+        # try to parse the XML
+        currentcoststruct = myparser.parseCurrentCostXML(line)
+
+        if currentcoststruct == None:
+            # something wrong with the line of xml we received
             print ('Received invalid data')
             return False
-        #
-        ccfuncs = CurrentCostDataFunctions()
-        ccfuncs.ParseCurrentCostXML(ccdb, newupd)
+        else:
+            # store the CurrentCost data in the datastore
+            myparser.storeTimedCurrentCostData(ccdb)
+
         # 
         return True
 
@@ -1223,24 +1232,8 @@ class MyFrame(wx.Frame):
 
 
 
-#####################################
-# XML parsing functions
-#
-def start_element(name, attrs):
-    global currentelement
-    currentelement = name
-def end_element(name):
-    global currentelement
-    currentelement = "none"
-def char_data(data):
-    global currentelement, newupd
-    newupd.UpdateProperty(currentelement, data)
-
-currentelement = "none"
-
-
 def getDataFromCurrentCostMeter(portdet, dialog):
-    global newupd, ccdb
+    global ccdb, myparser
     # 
     dialog.Update(0, 'Connecting to CurrentCost meter')
     ser = ""
@@ -1263,23 +1256,17 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 
     # we keep trying to get an update from the CurrentCost meter
     #  until we successfully populate the CurrentCost data object
-    while newupd.WattsDay01 == -1:
+    currentcoststruct = None
+    while currentcoststruct == None:
         (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost meter')
         if tocontinue == False:
             dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
             ser.close()
             dialog.Update(11, 'Cancelled.')
             return False
+
         try:
             line = ser.readline()
-            #
-            p = xml.parsers.expat.ParserCreate()
-            p.StartElementHandler = start_element
-            p.EndElementHandler = end_element
-            p.CharacterDataHandler = char_data
-            p.Parse(line, 1)
-        except xml.parsers.expat.ExpatError:
-            dialog.Update(1, 'Received incomplete data from CurrentCost meter. Waiting for a new reading')
         except serial.SerialException, err:
             dialog.Update(11, 'Failed to receive data from CurrentCost meter')
             errdlg = wx.MessageDialog(None,
@@ -1290,13 +1277,26 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             errdlg.Destroy()
             ser.Close()
             return False
+
+        # try to parse the XML
+        currentcoststruct = myparser.parseCurrentCostXML(line)
+
+        if currentcoststruct == None:
+            # something wrong with the line of xml we received
+            dialog.Update(1, 'Received invalid data from CurrentCost meter. Waiting for a new reading')
+        elif 'hist' not in currentcoststruct['msg']:
+            # something wrong with the line of xml we received
+            dialog.Update(1, 'Waiting for a history data from CurrentCost meter')
+        else:
+            # store the CurrentCost data in the datastore
+            myparser.storeTimedCurrentCostData(ccdb)
+
+
+
     #
     ser.close()
     dialog.Update(2, 'Parsing data received from CurrentCost meter')
     #
-    ccfuncs = CurrentCostDataFunctions()
-    ccfuncs.ParseCurrentCostXML(ccdb, newupd)
-    # 
     return True
 
 
