@@ -8,7 +8,7 @@
 #  Useful links:
 #  -------------   
 #     Overview of the app
-#                            http://currentcost.appspot.com/static/welcome.html
+#                            http://code.google.com/p/currentcostgui/
 #  
 #     Blog posts:
 #         1st version of the app              http://dalelane.co.uk/blog/?p=280
