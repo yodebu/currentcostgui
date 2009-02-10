@@ -35,6 +35,11 @@ The [http://code.google.com/p/currentcostgui/wiki/Prerequisites prereqs page] in
 == "Where do I get the MQTT library the app talks about?" ==
 Please see [MQTT the documentation about the MQTT feature]
 ----
+== "How do I get the Python scripts to work on my Mac?" ==
+A few people have reported that running Python on Mac OS can be a bit of a pain. I don't have access to a Mac to try this for myself, but I'm keeping a copy of any [MacOS useful advice I get from Mac OS owners]. 
+
+Please do add to this page if you figure something out that might help the next person to try!
+----
 == "What's the 'Sync with web' thing about?" ==
 Please see the [CompareYourData detailed doc about this feature]
 ----
