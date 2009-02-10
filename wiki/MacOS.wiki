@@ -9,6 +9,10 @@ At some point, I'll write this into clearer guidance, but in the meantime though
 
 = Details =
 
+A few people have reported that running Python on Mac OS can be a bit of a pain. I don't have access to a Mac to try this for myself, but I'll add any useful advice I get from Mac OS owners to this page.
+
+Please do add to this page if you figure something out that might help the next person to try!
+
 [http://dalelane.co.uk/blog/?p=297&cpage=1#comment-100135 Addy:]
 <blockquote>after many late night hours of hacking on my x86 iMac MAC OS X 10.5 (Leopard) I finally managed to get the currentcost.py GUI up and running! I don’t yet have the data cable, so can’t say whether it fully works yet.
 
