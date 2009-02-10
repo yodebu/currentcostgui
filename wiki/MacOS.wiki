@@ -1,0 +1,39 @@
+#summary Information for running the app on MacOS
+
+= Introduction =
+
+Taken from comments on http://dalelane.co.uk/blog/?p=297
+
+At some point, I'll write this into clearer guidance, but in the meantime thought it was useful to share even in this form.
+
+
+= Details =
+
+[http://dalelane.co.uk/blog/?p=297&cpage=1#comment-100135 Addy:]
+<blockquote>after many late night hours of hacking on my x86 iMac MAC OS X 10.5 (Leopard) I finally managed to get the currentcost.py GUI up and running! I don’t yet have the data cable, so can’t say whether it fully works yet.
+
+But I tried so many different Python and framework installs, I’m still not sure which one actually did the trick. In the end I stuck with the supplied Mac OS python (2.5.4) and used the Scipy Superpack script from;
+
+http://macinscience.org/?page_id=6
+
+I guess this also installed wxpython ?
+Certainly I had no luck with easy_install of wxpython which fails even under Ubuntu Linux. I think the wxpython tarball doesn’t have a top level setup.py script ?
+
+The final issue I had was with the pysqlite module which used a missing sqlite3 dynamic library symbol. In the end I had to replace the system sqlite3 dynamic library in /usr/lib with one I rebuilt under MacPorts. Yuk!</blockquote>
+
+[http://dalelane.co.uk/blog/?p=297&cpage=1#comment-100141 Addy:]
+<blockquote>...it seems to be running now, I reverted the system libsqlite library and exported DYLD_LIBRARY_PATH instead, because my console log was filling up with dyld errors.
+The Mac OS X serial device is /dev/tty.usbserial ...</blockquote>
+
+[http://dalelane.co.uk/blog/?p=297&cpage=1#comment-100171 Addy:]
+<blockquote>I eventually solved the missing symbols in the libsqlite library by rebuilding the MacPorts sqlite3 package. I found some instructions on how to do this by pasting the missing symbol error into Google.
+Then once the MacPorts library was rebuilt I exported DYLD_LIBRARY_PATH to pick up the new MacPorts library under /opt. But I am still using the Mac OS X python binary.</blockquote>
+
+[http://dalelane.co.uk/blog/?p=297&cpage=1#comment-100172 Addy:]
+<blockquote>I just found the webpage with the ‘fix’ for rebuilding the MacPorts sqlite3 package;
+
+http://oss.itsystementwicklung.de/trac/pysqlite/ticket/238
+
+`port install sqlite3 +loadable_extensions`
+
+I was seeing the “_sqlite3_enable_load_extension” symbol not being found error.</blockquote>
