@@ -151,15 +151,35 @@ class CurrentCostDataParser:
     #   handle to the internal CurrentCost data structure
     # 
     def parseCurrentCostXML(self, xmldata):
+        # reset the internal store
+        self.currentcoststruct = {}
+        self.currentpointer = []
+
+        # sanity check before running parser
+        if xmldata.startswith('<msg>') == False:
+            return None
+        if xmldata.endswith('</msg>') == False:
+            return None
+
         try:
             p = xml.parsers.expat.ParserCreate()
             p.StartElementHandler = self.start_element
             p.EndElementHandler = self.end_element
             p.CharacterDataHandler = self.char_data
             p.Parse(xmldata, 1)
+            return self.currentcoststruct
         except xml.parsers.expat.ExpatError:
-            print("Received incomplete or invalid data from CurrentCost meter.")
-        return self.currentcoststruct
+            #print("Received incomplete or invalid data from CurrentCost meter.")            
+            # reset the internal stores
+            self.currentcoststruct = {}
+            self.currentpointer = []
+        except Exception, msg:
+            #print 'Unknown error: ' + str(msg)
+            # reset the internal stores
+            self.currentcoststruct = {}
+            self.currentpointer = []
+
+        return None
 
 
     ###############################################################################
@@ -186,7 +206,11 @@ class CurrentCostDataParser:
     def storeTimedCurrentCostData(self, ccdb):
         # prepare a reference timestamp
         today = datetime.datetime.now()
-        
+
+        # the newer CC128 meter splits the history data over multiple updates
+        # we use this number to indicate how many updates are remaining
+        updatesremaining = '?'
+
         # different versions of the CurrentCost meter stored the version number
         #  in different places - so this if...else sequence is a little over-complex
         if 'src' in self.currentcoststruct['msg']:
@@ -194,6 +218,7 @@ class CurrentCostDataParser:
                 # version 2 CurrentCost meters                
                 if 'hist' in self.currentcoststruct['msg']:
                     self.converter.storeTimedCurrentCostDatav2(today, ccdb, self.currentcoststruct['msg']['hist'])
+                    updatesremaining = 0
             elif self.currentcoststruct['msg']['src'] == 'CC128-v0.09':
                 # CC128 CurrentCost meters
                 if 'hist' in self.currentcoststruct['msg']:
@@ -201,5 +226,29 @@ class CurrentCostDataParser:
                     #  to get different sensor data, change the 'if' statement below
                     for dataobj in self.currentcoststruct['msg']['hist']:
                         if self.currentcoststruct['msg']['hist'][dataobj]['sensor'] == '0':
-                            self.converter.storeTimedCurrentCostDatavcc128(today, ccdb, self.currentcoststruct['msg']['hist'][dataobj])
+                            self.converter.storeTimedCurrentCostDatavcc128(today, ccdb, self.currentcoststruct['msg']['hist'][dataobj])                            
+                            keys = (self.currentcoststruct['msg']['hist'][dataobj]).keys()
+                            keys.sort()
+                            for key in keys:
+                                keynumchk = key[0]
+                                # we assume that we wont receive a mixture of key types in one 
+                                #  update (e.g. hours mixed with months)
+                                if keynumchk == 'h':
+                                    keynumstr = key[1:len(key)]
+                                    updatesremaining = int(keynumstr) / 2
+                                    break
+                                elif keynumchk == 'd':
+                                    # the meter can return between 0 and 2 updates with daily data
+                                    # and between 0 and 2 updates with monthly data
+                                    # so at this point (where we have received an update with days
+                                    # in it) we assume that there can be at most 3 updates remaining
+                                    updatesremaining = 3
+                                    break
+                                elif keynumchk == 'm':
+                                    # the meter can return between 0 and 2 updates with monthly data
+                                    # so at this point (where we have received an update with months
+                                    # in it) we assume that there can be at most 1 update remaining
+                                    updatesremaining = 1
+                                    break
 
+        return updatesremaining
