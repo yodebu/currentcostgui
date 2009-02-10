@@ -18,6 +18,9 @@
 #         Seeking feedback                    http://dalelane.co.uk/blog/?p=298
 #         Adding web services functions       http://dalelane.co.uk/blog/?p=305
 #         Seeking testers for web services    http://dalelane.co.uk/blog/?p=307
+#         Setting personal targets            http://dalelane.co.uk/blog/?p=333
+#         Adding webservice showing all users http://dalelane.co.uk/blog/?p=434
+#         Updating the parser                 http://dalelane.co.uk/blog/?p=456
 # 
 #     Providing support
 #         http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui
@@ -38,6 +41,10 @@
 #                                     GUI's menus and their actions
 #   currentcostdata.py           - represents data contained in a single 
 #                                     update from a CurrentCost meter
+#   currentcostparser.py         - CurrentCost XML data parser used when 
+#                                     receiving data over serial connection
+#   currentcostdataconvert.py    - used by XML parser to convert relative 
+#                                     time descriptions into absolute
 #   currentcostdatafunctions.py  - converts the relative description of usage
 #                                     in a CurrentCost update into absolute
 #   currentcostdb.py             - sqlite DB to persist CurrentCost usage 
@@ -45,8 +52,17 @@
 #   currentcostgraphs.py         - matplotlib/wxPython code to implement the 
 #                                     tabs that make up the GUI
 #   currentcostvisualisations.py - draws bar graphs of CurrentCost data
+#   currentcostmqtt.py           - downloads history data from a remote 
+#                                     CurrentCost meter via MQTT
 #   googleappengine.py           - gets data from a Google App Engine web 
 #                                     service to show other user's data
+#   currentcostlivedata.py       - draws tab to display a graph of live data
+#   currentcostmqttlive.py       - downloads live data for the live graph 
+#                                     from a remote CurrentCost meter via MQTT
+#   currentcostcomlive.py        - downloads live data for the live graph 
+#                                     from a CurrentCost meter
+#   nationalgriddata.py          - downloads live national electricity usage 
+#                                     data from the National Grid realtime feed
 # 
 ############################################################################
 
@@ -57,17 +73,7 @@
 #
 #  python currentcost.py
 #
-# 
-#  prerequisites:
-#    numpy
-#    matplotlib
-#    pylab
-#    pickle
-#    simplejson
-#    pysqlite2
-#    wxpython
-#
-#  I used easy_install to install these. If you have problems installing 
-#   these, a compiled version of the code is available.
+#    list of required pre-requisites maintained at
+#     http://code.google.com/p/currentcostgui/wiki/Prerequisites
 #
 #############################################################################
