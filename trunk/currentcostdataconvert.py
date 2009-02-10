@@ -81,6 +81,9 @@ class CurrentCostDataConverter:
     #
     # creates absolute datetime object based on num of hours ago relative to now
     def GetOldHour(self, referenceDate, hoursago):
+        if referenceDate.hour % 2 == 0:
+            hoursago = hoursago + 1
+
         d = datetime.timedelta(hours=hoursago)
         basetime = referenceDate - d
         return datetime.datetime(basetime.year, basetime.month, basetime.day, basetime.hour, 0, 0)

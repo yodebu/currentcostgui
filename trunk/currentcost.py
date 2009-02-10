@@ -36,9 +36,10 @@ import datetime
 import pylab
 import math
 import time
-import serial
 import datetime
 import webbrowser
+import serial
+
 
 from googleappengine           import GoogleAppEngine
 from googleappengine           import GroupData as CurrentCostGroupData
@@ -48,7 +49,7 @@ from currentcostvisualisations import CurrentCostVisualisations
 from currentcostdb             import CurrentCostDB
 from currentcostlivedata       import CurrentCostLiveData
 from currentcostparser         import CurrentCostDataParser
-
+from currentcostserialconn     import CurrentCostConnection
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx as Toolbar
@@ -99,6 +100,8 @@ from matplotlib.text import Text
 # 
 #   currentcost.py               - main entry function, and implements the 
 #                                     GUI's menus and their actions
+#   currentcostserialconn.py     - makes a serial connection to a CurrentCost
+#                                     meter
 #   currentcostdata.py           - represents data contained in a single 
 #                                     update from a CurrentCost meter
 #   currentcostparser.py         - CurrentCost XML data parser used when 
@@ -162,6 +165,8 @@ livedataagent = CurrentCostLiveData()
 # stores the unit to be used in graphs
 graphunits = "kWh"
 
+# class to create a serial connection to CurrentCost meters
+myserialconn = CurrentCostConnection()
 
 class MyFrame(wx.Frame):
     f0 = None
@@ -674,7 +679,7 @@ class MyFrame(wx.Frame):
             newcom = dlg.GetValue()
             if lastcom != newcom:
                 ccdb.StoreSetting("comport", newcom)
-            dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to CurrentCost meter', maximum = 11, style=wx.PD_CAN_ABORT)
+            dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to local CurrentCost meter using serial connection', maximum = 11, style=wx.PD_CAN_ABORT)
             if getDataFromCurrentCostMeter(dlg.GetValue(), dialog) == True:
                 drawMyGraphs(self, dialog, False)
             dialog.Destroy()
@@ -1233,13 +1238,22 @@ class MyFrame(wx.Frame):
 
 
 def getDataFromCurrentCostMeter(portdet, dialog):
-    global ccdb, myparser
+    global ccdb, myparser, myserialconn
     # 
-    dialog.Update(0, 'Connecting to CurrentCost meter')
+    dialog.Update(0, 'Connecting to local CurrentCost meter - using device "' + portdet + '"')
     ser = ""
     try:
         # connect to the CurrentCost meter
-        ser = serial.Serial(port=portdet, timeout=5)
+        #
+        # we *hope* that the serialconn class will automatically handle what 
+        # connection settings (other than COM port number) are required for the
+        # model of CurrentCost meter we are using 
+        # 
+        # the serialconn class does not handle serial exceptions - we need to 
+        # catch and handle these ourselves
+        # (the only exception to this is that it will close the connection 
+        #  in the event of an error, so we do not need to do this explicitly)
+        myserialconn.connect(portdet)
     except serial.SerialException, msg:
         dialog.Update(11, 'Failed to connect to CurrentCost meter')
         errdlg = wx.MessageDialog(None,
@@ -1252,31 +1266,46 @@ def getDataFromCurrentCostMeter(portdet, dialog):
     except:
         dialog.Update(11, 'Failed to connect to CurrentCost meter')
         return False
-    line = ""
 
     # we keep trying to get an update from the CurrentCost meter
     #  until we successfully populate the CurrentCost data object
     currentcoststruct = None
-    while currentcoststruct == None:
-        (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost meter')
+    # the newer CC128 meter splits the history data over multiple updates
+    # we use this number to indicate how many updates are remaining
+    updatesremaining = 1
+    while updatesremaining > 0:
+        (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost (' + str(updatesremaining) + ' update(s) remaining)')
         if tocontinue == False:
             dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
-            ser.close()
+            myserialconn.disconnect()
             dialog.Update(11, 'Cancelled.')
             return False
 
-        try:
-            line = ser.readline()
-        except serial.SerialException, err:
-            dialog.Update(11, 'Failed to receive data from CurrentCost meter')
-            errdlg = wx.MessageDialog(None,
-                                      'Serial Exception: ' + str(err),
-                                      'Failed to receive data from CurrentCost meter', 
-                                      style=(wx.OK | wx.ICON_EXCLAMATION))
-            errdlg.ShowModal()        
-            errdlg.Destroy()
-            ser.Close()
-            return False
+        # line of data received from serial port
+        line = ""
+
+        while len(line) == 0:
+            try:
+                line = myserialconn.readUpdate()
+            except serial.SerialException, err:
+                dialog.Update(11, 'Failed to receive data from CurrentCost meter')
+                errdlg = wx.MessageDialog(None,
+                                          'Serial Exception: ' + str(err),
+                                          'Failed to receive data from CurrentCost meter', 
+                                          style=(wx.OK | wx.ICON_EXCLAMATION))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+                return False
+            except Exception, msg:
+                dialog.Update(11, 'Failed to receive data from CurrentCost meter')
+                errdlg = wx.MessageDialog(None,
+                                          'Exception: ' + str(msg),
+                                          'Failed to receive data from CurrentCost meter', 
+                                          style=(wx.OK | wx.ICON_EXCLAMATION))
+                errdlg.ShowModal()        
+                errdlg.Destroy()
+                return False
+
 
         # try to parse the XML
         currentcoststruct = myparser.parseCurrentCostXML(line)
@@ -1285,17 +1314,40 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             # something wrong with the line of xml we received
             dialog.Update(1, 'Received invalid data from CurrentCost meter. Waiting for a new reading')
         elif 'hist' not in currentcoststruct['msg']:
-            # something wrong with the line of xml we received
-            dialog.Update(1, 'Waiting for a history data from CurrentCost meter')
+            # we received something which looked like valid CurrentCost data,
+            #  but did not contain any history data
+            # this means, either:
+            #  a) something wrong - we need to wait for history data
+            #  b) (CC128-only) the meter has finished outputting it's series of
+            #        history updates, and has gone back to outputting live data
+            #        in which case we have finished and need to break out of 
+            #        the loop we are in
+
+            if currentcoststruct['msg']['src'] == 'CC128-v0.09':
+                # HACK!
+                # this may or may not be true - there is a potential that a 
+                # CC128 meter returned us some data (e.g. broken or partial XML)
+                # that didn't contain <HIST> before we received a complete set
+                # of history data
+                # however, as the last update from the meter is not fixed (it can
+                # be <h004> or <d001> or <m001>) it's hard to know what to look 
+                # for as a reliable end point
+                # for now, we just assume that when the meter stops outputting 
+                # history, then it has finished correctly
+                # probably something to come back to at a future date!
+                updatesremaining = 0
+            else:
+                dialog.Update(1, 'Waiting for history data from CurrentCost meter')
         else:
-            # store the CurrentCost data in the datastore
-            myparser.storeTimedCurrentCostData(ccdb)
+            # we have received history data - parse and store the CurrentCost 
+            #  data in the datastore
+            # the parser will return the number of updates still expected 
+            #  (0 if this was the last or only expected update)
+            updatesremaining = myparser.storeTimedCurrentCostData(ccdb)
 
-
-
+    dialog.Update(2, 'Received complete history data from CurrentCost meter')
     #
-    ser.close()
-    dialog.Update(2, 'Parsing data received from CurrentCost meter')
+    myserialconn.disconnect()    
     #
     return True
 
