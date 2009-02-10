@@ -36,4 +36,4 @@ http://oss.itsystementwicklung.de/trac/pysqlite/ticket/238
 
 `port install sqlite3 +loadable_extensions`
 
-I was seeing the “_sqlite3_enable_load_extension” symbol not being found error.</blockquote>
+I was seeing the `_sqlite3_enable_load_extension` symbol not being found error.</blockquote>
