@@ -39,6 +39,8 @@
 # 
 #   currentcost.py               - main entry function, and implements the 
 #                                     GUI's menus and their actions
+#   currentcostserialconn.py     - makes a serial connection to a CurrentCost
+#                                     meter
 #   currentcostdata.py           - represents data contained in a single 
 #                                     update from a CurrentCost meter
 #   currentcostparser.py         - CurrentCost XML data parser used when 
