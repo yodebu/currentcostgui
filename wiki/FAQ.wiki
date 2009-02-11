@@ -72,3 +72,8 @@ c) Download my script, and py2exe. And build it into an executable yourself. The
 
 Sorry I don't have any more helpful answers - I've put a lot of time into investigating this before, and am completely stumped.
 ----
+== "Why does it take so long to download history data from the CC128?" ==
+Short version - that's how long it takes the CC128 meter to output history data, sorry.
+
+Long version - I've [http://dalelane.co.uk/blog/?p=456 discussed this on my blog] but it seems that the CC128 doesn't output it's history in a single XML message. It splits it up into multiple messages. And there is a high level of redundancy in the messages - consecutive messages have overlapping copies of the data, so it does take a long time for it to output the whole history. I'm seeing output times of over ten minutes for a meter with 14 days of history stored. There is nothing my app can do to speed this up - sorry.
+----
