@@ -28,8 +28,6 @@ Yes.
 Sort of. 
 
 For the moment, consider the CC128 support to be an alpha feature in a beta product. Which is a polite way of saying that it's still a little flakey. But it's a start!
-
-The live graphs wont work yet, but it should be able to download and display the history okay. 
 ----
 == "Which Windows COM port should I connect to?" ==
 This depends on the software driver you are using to connect your CurrentCost meter to your computer. If you use the Prolific driver linked to on the [http://code.google.com/p/currentcostgui/wiki/Prerequisites Prerequisites page] then the COM port for your cable is specified in Device Manager:
