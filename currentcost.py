@@ -326,7 +326,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.17"
+        info.Version = "0.9.18"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -375,7 +375,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.17":
+        elif latestversion != "0.9.18":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -1323,7 +1323,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #        in which case we have finished and need to break out of 
             #        the loop we are in
 
-            if currentcoststruct['msg']['src'] == 'CC128-v0.09':
+            if currentcoststruct['msg']['src'].startswith('CC128-v0.'):
                 # HACK!
                 # this may or may not be true - there is a potential that a 
                 # CC128 meter returned us some data (e.g. broken or partial XML)
