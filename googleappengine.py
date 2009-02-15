@@ -309,7 +309,26 @@ class GoogleAppEngine():
                 progdlg.Destroy()
                 return False
             else:
-                print err.code
+                errdlg = wx.MessageDialog(self,
+                                          "Unable to connect to Google (HTTP error " + str(msg) + ")",
+                                          'CurrentCost', 
+                                          style=(wx.OK | wx.ICON_ERROR))
+                errdlg.ShowModal()
+                errdlg.Destroy()
+                progdlg.Update(numitems, "Failed to upload")
+                progdlg.Destroy()
+                return False        
+        except Exception, msg:
+            errdlg = wx.MessageDialog(self,
+                                      "Unable to connect to Google (" + str(msg) + ")",
+                                      'CurrentCost', 
+                                      style=(wx.OK | wx.ICON_ERROR))
+            errdlg.ShowModal()
+            errdlg.Destroy()
+            progdlg.Update(numitems, "Failed to upload")
+            progdlg.Destroy()
+            return False
+            
 
         progdlg.Update(curidx, 'Connection made')
 
@@ -351,22 +370,29 @@ class GoogleAppEngine():
             # don't upload empty items (CurrentCost meters fill in empty 
             #   values with 0)
 
-            if updat['ccvalue'] > 0:
-                postreq_data = urllib.urlencode( { "ccdatatype"  : "hour",
-                                                   "ccdatavalue" : updat['ccvalue'],
-                                                   "ccyear"      : updat['timestamp'].year,
-                                                   "ccmonth"     : updat['timestamp'].month,
-                                                   "ccdate"      : updat['timestamp'].day,
-                                                   "cchour"      : updat['timestamp'].hour } )
-                post_req = urllib2.Request('http://currentcost.appspot.com/ccdata/add', data=postreq_data)
-                post_resp = urllib2.urlopen(post_req)
-                post_resp_body = post_resp.read()
+            try:
+                if updat['ccvalue'] > 0:
+                    postreq_data = urllib.urlencode( { "ccdatatype"  : "hour",
+                                                       "ccdatavalue" : updat['ccvalue'],
+                                                       "ccyear"      : updat['timestamp'].year,
+                                                       "ccmonth"     : updat['timestamp'].month,
+                                                       "ccdate"      : updat['timestamp'].day,
+                                                       "cchour"      : updat['timestamp'].hour } )
+                    post_req = urllib2.Request('http://currentcost.appspot.com/ccdata/add', data=postreq_data)
+                    post_resp = urllib2.urlopen(post_req)
+                    post_resp_body = post_resp.read()
+        
+                    if post_resp_body != "OK":
+                        print post_resp_body
     
-                if post_resp_body != "OK":
-                    print post_resp_body
+                # mark this as uploaded, and get the next one to upload
+                ccdatabase.ConfirmHourDataUploaded(updat)
+            except:
+                # TODO - FIXME
+                # we need to stop if we keep failing to upload data
+                # or at least inform the user?
+                counterrs = 1
 
-            # mark this as uploaded, and get the next one to upload
-            ccdatabase.ConfirmHourDataUploaded(updat)
             updat = ccdatabase.GetHourDataToUpload()
 
 
