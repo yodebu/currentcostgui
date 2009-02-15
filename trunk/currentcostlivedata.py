@@ -78,9 +78,9 @@ class CurrentCostLiveData():
     # 
     # taken from http://www.nationalgrid.com/uk/Electricity/Data/Realtime/
     #
-    NGFREQ_MIN  = 49.7
-    NGFREQ_ZERO = 50.0
-    NGFREQ_MAX  = 50.3
+    NGFREQ_MIN  = 49.8
+    NGFREQ_ZERO = 50.00
+    NGFREQ_MAX  = 50.2
 
     # background threads actually getting the live data
     mqttClient = None
@@ -226,6 +226,8 @@ class CurrentCostLiveData():
                 self.livegraphNGFrequency.xaxis.set_major_formatter(self.stddatefmtter)
                 self.livegraphNGFrequency.xaxis.set_minor_formatter(self.stddatefmtter)
                 self.livegraphNGFrequency.yaxis.set_major_formatter(self.freqfmtter)
+                for line in self.livegraphNGFrequency.get_yticklines():
+                    line.set_markersize(0)
         except Exception, e:
             print 'DEBUG: error - failed to assign xaxis formatters'
             print str(e)
@@ -527,11 +529,11 @@ class CurrentCostLiveData():
     # meaning taken from http://dynamicdemand.co.uk/grid.htm
     # 
     def formatFrequencyData(self, x, pos=None):
-        if x == self.NGFREQ_ZERO:
+        if round(x, 2) == 50.00:
             return 'supply = demand'
-        elif x == 49.8:
+        elif round(x, 2) == 49.90:
             return 'supply > demand'
-        elif x == 50.2:
+        elif round(x, 2) == 50.10:
             return 'supply < demand'
         else:
             return ''

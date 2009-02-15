@@ -854,67 +854,69 @@ class MyFrame(wx.Frame):
             # update the GUI to show what the user has selected
             self.f0.Check(self.MENU_LIVE, False)
             self.f0.Check(self.MENU_MQTT_LIVE, False)
-        else:
+            return
+
+        if livedataagent.connectionType == livedataagent.CONNECTION_MQTT:
             # disconnect any existing connection
             livedataagent.disconnect()
 
-            #
-            # get information from the user required to establish the connection
-            #  prefill with setting from database if possible
-            #
+        #
+        # get information from the user required to establish the connection
+        #  prefill with setting from database if possible
+        #
 
-            dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
-            lastcom = ccdb.RetrieveSetting("comport")
-            if lastcom:
-                dlg.SetValue(lastcom)
-            if dlg.ShowModal() == wx.ID_OK:
-                newcom = dlg.GetValue()
-                if lastcom != newcom:
-                    ccdb.StoreSetting("comport", newcom)
+        dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
+        lastcom = ccdb.RetrieveSetting("comport")
+        if lastcom:
+            dlg.SetValue(lastcom)
+        if dlg.ShowModal() == wx.ID_OK:
+            newcom = dlg.GetValue()
+            if lastcom != newcom:
+                ccdb.StoreSetting("comport", newcom)
 
-                try:
-                    # connect to the CurrentCost meter
-                    #
-                    # we *hope* that the serialconn class will automatically handle what
-                    # connection settings (other than COM port number) are required for the
-                    # model of CurrentCost meter we are using
-                    #
-                    # the serialconn class does not handle serial exceptions - we need to
-                    # catch and handle these ourselves
-                    # (the only exception to this is that it will close the connection
-                    #  in the event of an error, so we do not need to do this explicitly)
-                    myserialconn.connect(newcom)
-                except serial.SerialException, msg:
-                    errdlg = wx.MessageDialog(None,
-                                              'Serial Exception: ' + str(msg),
-                                              'Failed to connect to CurrentCost meter',
-                                              style=(wx.OK | wx.ICON_EXCLAMATION))
-                    errdlg.ShowModal()
-                    errdlg.Destroy()
-                    return False
-                except:
-                    errdlg = wx.MessageDialog(None,
-                                              'CurrentCost',
-                                              'Failed to connect to CurrentCost meter',
-                                              style=(wx.OK | wx.ICON_EXCLAMATION))
-                    errdlg.ShowModal()
-                    errdlg.Destroy()
-                    return False
+            try:
+                # connect to the CurrentCost meter
+                #
+                # we *hope* that the serialconn class will automatically handle what
+                # connection settings (other than COM port number) are required for the
+                # model of CurrentCost meter we are using
+                #
+                # the serialconn class does not handle serial exceptions - we need to
+                # catch and handle these ourselves
+                # (the only exception to this is that it will close the connection
+                #  in the event of an error, so we do not need to do this explicitly)
+                myserialconn.connect(newcom)
+            except serial.SerialException, msg:
+                errdlg = wx.MessageDialog(None,
+                                          'Serial Exception: ' + str(msg),
+                                          'Failed to connect to CurrentCost meter',
+                                          style=(wx.OK | wx.ICON_EXCLAMATION))
+                errdlg.ShowModal()
+                errdlg.Destroy()
+                return False
+            except:
+                errdlg = wx.MessageDialog(None,
+                                          'CurrentCost',
+                                          'Failed to connect to CurrentCost meter',
+                                          style=(wx.OK | wx.ICON_EXCLAMATION))
+                errdlg.ShowModal()
+                errdlg.Destroy()
+                return False
 
-                # create a new connection
-                livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
-                                      self.liveaxes, 
-                                      None, None, 
-                                      myserialconn)
-                
-                # update the GUI to show what the user has selected
-                self.f0.Check(self.MENU_LIVE, True)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
-            else:
-                # update the GUI to show that the user has cancelled
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)                
-            dlg.Destroy()
+            # create a new connection
+            livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
+                                  self.liveaxes, 
+                                  None, None, 
+                                  myserialconn)
+            
+            # update the GUI to show what the user has selected
+            self.f0.Check(self.MENU_LIVE, True)
+            self.f0.Check(self.MENU_MQTT_LIVE, False)
+        else:
+            # update the GUI to show that the user has cancelled
+            self.f0.Check(self.MENU_LIVE, False)
+            self.f0.Check(self.MENU_MQTT_LIVE, False)                
+        dlg.Destroy()
 
 
 
@@ -933,60 +935,62 @@ class MyFrame(wx.Frame):
                 # update the GUI to show what the user has selected
                 self.f0.Check(self.MENU_LIVE, False)
                 self.f0.Check(self.MENU_MQTT_LIVE, False)
-            else:
+                return
+
+            if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
                 # disconnect any existing connection
                 livedataagent.disconnect()
 
-                #
-                # get information from the user required to establish the connection
-                #  prefill with setting from database if possible
-                #
-        
-                # IP address
-        
-                dlg = wx.TextEntryDialog(self, 
-                                         'Specify the IP address or hostname of a message broker to connect to:',
-                                         'CurrentCost')
-                lastipaddr = ccdb.RetrieveSetting("mqttipaddress")
-                if lastipaddr:
-                    dlg.SetValue(lastipaddr)
-                else:
-                    dlg.SetValue('204.146.213.96')
-                if dlg.ShowModal() != wx.ID_OK:
-                    dlg.Destroy()
-                    return False
-                ipaddr = dlg.GetValue()
-                if lastipaddr != ipaddr:
-                    ccdb.StoreSetting("mqttipaddress", ipaddr)
+            #
+            # get information from the user required to establish the connection
+            #  prefill with setting from database if possible
+            #
+    
+            # IP address
+    
+            dlg = wx.TextEntryDialog(self, 
+                                     'Specify the IP address or hostname of a message broker to connect to:',
+                                     'CurrentCost')
+            lastipaddr = ccdb.RetrieveSetting("mqttipaddress")
+            if lastipaddr:
+                dlg.SetValue(lastipaddr)
+            else:
+                dlg.SetValue('204.146.213.96')
+            if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
-        
-                # topic string
-        
-                dlg = wx.TextEntryDialog(self, 
-                                         'Specify the topic string to subscribe to:',
-                                         'CurrentCost')
-                lasttopicstring = ccdb.RetrieveSetting("mqttlivetopicstring")
-                if lasttopicstring:
-                    dlg.SetValue(lasttopicstring)
-                else:
-                    dlg.SetValue('PowerMeter/CC/YourUserNameHere')
-                if dlg.ShowModal() != wx.ID_OK:
-                    dlg.Destroy()
-                    return False
-                topicString = dlg.GetValue()
-                if lasttopicstring != topicString:
-                    ccdb.StoreSetting("mqttlivetopicstring", topicString)
+                return False
+            ipaddr = dlg.GetValue()
+            if lastipaddr != ipaddr:
+                ccdb.StoreSetting("mqttipaddress", ipaddr)
+            dlg.Destroy()
+    
+            # topic string
+    
+            dlg = wx.TextEntryDialog(self, 
+                                     'Specify the topic string to subscribe to:',
+                                     'CurrentCost')
+            lasttopicstring = ccdb.RetrieveSetting("mqttlivetopicstring")
+            if lasttopicstring:
+                dlg.SetValue(lasttopicstring)
+            else:
+                dlg.SetValue('PowerMeter/CC/YourUserNameHere')
+            if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
+                return False
+            topicString = dlg.GetValue()
+            if lasttopicstring != topicString:
+                ccdb.StoreSetting("mqttlivetopicstring", topicString)
+            dlg.Destroy()
 
-                # create a new connection
-                livedataagent.connect(self, livedataagent.CONNECTION_MQTT, 
-                                      self.liveaxes, 
-                                      ipaddr, topicString, 
-                                      None)                
-                
-                # update the GUI to show what the user has selected
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, True)            
+            # create a new connection
+            livedataagent.connect(self, livedataagent.CONNECTION_MQTT, 
+                                  self.liveaxes, 
+                                  ipaddr, topicString, 
+                                  None)                
+            
+            # update the GUI to show what the user has selected
+            self.f0.Check(self.MENU_LIVE, False)
+            self.f0.Check(self.MENU_MQTT_LIVE, True)            
         else:
             dlg = wx.MessageDialog(self,
                                    "Connecting via MQTT requires the use of a third-party module. "
