@@ -383,10 +383,10 @@ class MQTTUpdateThread(Thread):
 
 # a background thread used to create a serial connection
 class SerialUpdateThread(Thread):
-    def __init__(self, comclienthandle, comportstr, liveagent):
+    def __init__(self, comclienthandle, comportclass, liveagent):
         Thread.__init__(self)
         self.comClient = comclienthandle
-        self.comport = comportstr
+        self.comport = comportclass
         self.graphhandle = liveagent
     def run(self):
         res = self.comClient.EstablishConnection(self.comport, 
