@@ -21,6 +21,7 @@
 #
 
 import serial
+import threading       # this class needs to be thread-safe
 
 #
 # Opens a serial connection to CurrentCost meters
@@ -31,6 +32,8 @@ class CurrentCostConnection():
 
     connection = None
     connerr = None
+
+    lock = threading.Lock()
 
     #
     # connect to the specified COM port (or serial device for Linux etc.)
@@ -106,10 +109,14 @@ class CurrentCostConnection():
     #
     # reads a line of XML from any active serial connection
     #   
+    #  this class can potentially be used by multiple threads, so it is 
+    #   important for synchronisation to be maintained
+    # 
     def readUpdate(self):
 
         if self.connection != None:
             try:
+                self.lock.acquire()
                 line = self.connection.readline()
                 line = line.rstrip('\r\n')
                 return line
@@ -119,6 +126,8 @@ class CurrentCostConnection():
             except Exception, msg:
                 self.disconnect()
                 raise msg
+            finally:
+                self.lock.release()
 
     #
     # test for connection

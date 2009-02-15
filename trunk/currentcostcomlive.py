@@ -42,33 +42,19 @@ class CurrentCostSerialConnection():
     #
     # Establish a connection to the CurrentCost meter
     # 
-    def EstablishConnection(self, comportname, guihandle):
+    def EstablishConnection(self, comportobj, guihandle):
 
+        self.ser = comportobj
         self.toCancel = False
         
-        #
-        # try and make the connection to the CurrentCost meter
-        # 
-            
-        ser = ""
-        try:
-            # connect to the CurrentCost meter
-            self.ser = serial.Serial(port=comportname, timeout=5)
-        except serial.SerialException, msg:
-            guihandle.exitOnError('Serial Exception: ' + str(msg))
-            return 
-        except:
-            guihandle.exitOnError('Failed to connect to CurrentCost meter')
-            return 
-
         #
         # look for the current reading in the data
         # 
         line = ""
         while self.toCancel == False:
             try:
-                line = self.ser.readline()
-
+                line = self.ser.readUpdate()
+                
                 idx = line.find('<ch1><watts>')
                 if idx > 0:
                     idx += 12
@@ -87,7 +73,7 @@ class CurrentCostSerialConnection():
                     return
 
         try:
-            self.ser.close()
+            self.ser.disconnect()
         except:
             self.guicallback.exitOnError('Error when closing COM port')
 
@@ -97,5 +83,5 @@ class CurrentCostSerialConnection():
     # 
     def Disconnect(self):
         self.toCancel = True
-        self.ser.close()
+        self.ser.disconnect()
 
