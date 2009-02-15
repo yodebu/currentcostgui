@@ -69,7 +69,13 @@ class PlotNotebook(wx.Panel):
            if self.nb.GetPageText(i) == pagename:
                 self.nb.DeletePage(i)
                 return
-               
+
+    def selectpage(self,pagename):
+        for i in range(0, self.nb.GetPageCount()):
+           if self.nb.GetPageText(i) == pagename:
+                self.nb.SetSelection(i)
+                return
+
     def addtextpage(self,name):
         page = TextPage(self.nb)
         self.nb.AddPage(page,name)

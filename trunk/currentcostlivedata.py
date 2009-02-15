@@ -64,12 +64,23 @@ class CurrentCostLiveData():
     ccdates = []
     ccreadings = []
 
-    ngdemanddates = []
+    #
+    # National Grid data store - dates and the readings
+    #  assuming equivalent indices - e.g. the third date goes with
+    #       the third reading
+    ngdatadates = []
     ngdemandreadings = []
-
-    ngfreqdates = []
     ngfreqreadings = []
     ngfreqzeroline = []
+
+    # 
+    # likely limits for National Grid frequency data
+    # 
+    # taken from http://www.nationalgrid.com/uk/Electricity/Data/Realtime/
+    #
+    NGFREQ_MIN  = 49.7
+    NGFREQ_ZERO = 50.0
+    NGFREQ_MAX  = 50.3
 
     # background threads actually getting the live data
     mqttClient = None
@@ -105,10 +116,10 @@ class CurrentCostLiveData():
                 print str(e.message)
                 return False
         
-        if self.livegraphNGDemand != None and len(self.ngdemanddates) > 0:
+        if self.livegraphNGDemand != None and len(self.ngdatadates) > 0:
             try:
                 # update the graph
-                self.livegraphNGDemand.plot_date(self.ngdemanddates, 
+                self.livegraphNGDemand.plot_date(self.ngdatadates, 
                                                  self.ngdemandreadings,
                                                  'b-')
             except Exception, e:
@@ -117,17 +128,17 @@ class CurrentCostLiveData():
                 print str(e.message)
                 return False
 
-        if self.livegraphNGFrequency != None and len(self.ngfreqdates) > 0:
+        if self.livegraphNGFrequency != None and len(self.ngdatadates) > 0:
             try:
                 # update the graph
-                self.livegraphNGFrequency.plot_date(self.ngfreqdates, 
+                self.livegraphNGFrequency.plot_date(self.ngdatadates, 
                                                     self.ngfreqreadings,
                                                     'b-')
                 # add a 'zero' (e.g. 50Hz) line to the graph
                 # I tried to do this using axhline but it threw some weird 
                 #  ordinal must be >= 1 errors when I tried doing any additional
                 #  plots. This is a fairly hacky workaround
-                self.livegraphNGFrequency.plot_date(self.ngfreqdates, 
+                self.livegraphNGFrequency.plot_date(self.ngdatadates, 
                                                     self.ngfreqzeroline,
                                                     'g-')
             except Exception, e:
@@ -191,11 +202,11 @@ class CurrentCostLiveData():
         # 
         endtime = datetime.datetime.now()
         self.livegraph.set_xlim(xmin=self.starttime, xmax=endtime)
-        if self.showNationalGridDemand == True:
+        if self.livegraphNGDemand != None:
             self.livegraphNGDemand.set_xlim(xmin=self.starttime, xmax=endtime)
-        if self.showNationalGridFrequency == True:
+        if self.livegraphNGFrequency != None:
             self.livegraphNGFrequency.set_xlim(xmin=self.starttime, xmax=endtime)
-            self.livegraphNGFrequency.set_ylim(ymin=49, ymax=51)
+            self.livegraphNGFrequency.set_ylim(ymin=self.NGFREQ_MIN, ymax=self.NGFREQ_MAX)
         
         #
         # Step 5:
@@ -269,6 +280,16 @@ class CurrentCostLiveData():
 
 
     #
+    # prepare the graph used to display live CurrentCost data
+    # 
+    def prepareCurrentcostDataGraph(self, graphaxes):
+        # prepare graph for drawing
+        self.livegraph = graphaxes
+        self.livegraph.set_ylabel('kWh')
+        self.livegraph.grid(True)
+        self.livegraph.set_autoscale_on = False
+
+    #
     # called to create a connection to the CurrentCost meter
     # 
     def connect(self, guihandle, connType, graphaxes, ipaddr, topic, com):
@@ -279,9 +300,7 @@ class CurrentCostLiveData():
 
         # prepare graph for drawing
         self.livegraph.cla()
-        self.livegraph.set_ylabel('kWh')
-        self.livegraph.grid(True)
-        self.livegraph.set_autoscale_on = False
+        self.prepareCurrentcostDataGraph(graphaxes)
 
         if self.starttime == None:
             self.starttime = datetime.datetime.now()
@@ -344,28 +363,28 @@ class CurrentCostLiveData():
     def updateNationalGridGraph(self, ngdemand, ngfrequency):
 
         # store the new National Grid data readings
-        self.ngdemanddates.append(datetime.datetime.now())
-        self.ngdemandreadings.append(ngdemand)
-        self.ngfreqdates.append(datetime.datetime.now())
-        self.ngfreqreadings.append(ngfrequency)
-        self.ngfreqzeroline.append(50)
+        if ngdemand != None and ngfrequency != None:
+            self.ngdatadates.append(datetime.datetime.now())
+            self.ngdemandreadings.append(ngdemand)
+            self.ngfreqreadings.append(ngfrequency)
+            self.ngfreqzeroline.append(self.NGFREQ_ZERO)
     
-        # if we are also plotting live CurrentCost readings, we allow the 
-        #  CurrentCost update function to redraw the graph (otherwise, 
-        #  having two threads redrawing the graph at the same time tends to
-        #  screw matplotlib up). 
-        # if we are only plotting National Grid data, then we need to redraw
-        #  the graph now
-        if self.connectionType == self.CONNECTION_NONE:
-            self.redrawGraph()
+            # if we are also plotting live CurrentCost readings, we allow the 
+            #  CurrentCost update function to redraw the graph (otherwise, 
+            #  having two threads redrawing the graph at the same time tends to
+            #  screw matplotlib up). 
+            # if we are only plotting National Grid data, then we need to redraw
+            #  the graph now
+            if self.connectionType == self.CONNECTION_NONE:
+                self.redrawGraph()
 
 
 
     #
-    # stop and start the download and display of national electricity demand
+    # start the download and display of national electricity demand
     #  data from the National Grid
     # 
-    def toggleNationalGridDemandData(self, livegraphaxes):
+    def startNationalGridDemandData(self, livegraphaxes):
         
         if self.showNationalGridDemand == False:
             # we are not currently showing national demand data, but we 
@@ -379,28 +398,35 @@ class CurrentCostLiveData():
 
             # store a handle to the parent graph if required (only if we 
             #  are viewing National Grid data without personal CurrentCost data)
-            if self.livegraph == None:
+            if livegraphaxes != None:
                 self.livegraph = livegraphaxes
 
             # we (currently) cannot show both demand and frequency on the same 
             #  graph. so if there is an existing graph for frequency data, we
             #  need to delete it now
             if self.livegraphNGFrequency != None:
-                self.livegraph.delaxes(self.livegraphNGFrequency)
                 self.livegraphNGFrequency = None
 
             # if we are re-starting an existing graph, we don't need to create
             #  the axes to draw on.
             # otherwise, we create them now
             if self.livegraphNGDemand == None:
-                self.livegraphNGDemand = self.livegraph.twinx()
+                self.livegraphNGDemand = self.livegraph.twinx()                
                 self.livegraphNGDemand.set_ylabel('UK electricity demand (MW)')
 
             # create a background thread that will poll the National Grid
             #  website and return national electricity demand values
-            self.ngdClient = NationalGridUpdateThread(self)
-            self.ngdClient.start()
-        else:
+            if self.ngdClient == None:
+                self.ngdClient = NationalGridUpdateThread(self)
+                self.ngdClient.start()
+
+    #
+    # stop the download and display of national electricity demand
+    #  data from the National Grid
+    # 
+    def stopNationalGridDemandData(self):
+        
+        if self.showNationalGridDemand == True:
             # we are currently showing national demand data, but we are 
             #   about to stop
             self.showNationalGridDemand = False
@@ -408,12 +434,26 @@ class CurrentCostLiveData():
             # stop the background thread
             self.ngdClient.stopUpdates()
 
+            # delete the background thread object
+            self.ngdClient = None
 
     #
-    # stop and start the download and display of national electricity frequency
+    # stop the display of national electricity demand
     #  data from the National Grid
     # 
-    def toggleNationalGridFrequencyData(self, livegraphaxes):
+    def pauseNationalGridDemandData(self):
+        
+        if self.showNationalGridDemand == True:
+            # we are currently showing national demand data, but we are 
+            #   about to stop
+            self.showNationalGridDemand = False
+
+
+    #
+    # start the download and display of national electricity frequency
+    #  data from the National Grid
+    # 
+    def startNationalGridFrequencyData(self, livegraphaxes):
 
         if self.showNationalGridFrequency == False:
             # we are not currently showing national frequency data, but we 
@@ -427,14 +467,13 @@ class CurrentCostLiveData():
 
             # store a handle to the parent graph if required (only if we 
             #  are viewing National Grid data without personal CurrentCost data)
-            if self.livegraph == None:
+            if livegraphaxes != None:
                 self.livegraph = livegraphaxes
 
             # we (currently) cannot show both demand and frequency on the same 
             #  graph. so if there is an existing graph for demand data, we
             #  need to delete it now
             if self.livegraphNGDemand != None:
-                self.livegraph.delaxes(self.livegraphNGDemand)
                 self.livegraphNGDemand = None
 
             # if we are re-starting an existing graph, we don't need to create
@@ -444,14 +483,20 @@ class CurrentCostLiveData():
                 self.livegraphNGFrequency = self.livegraph.twinx()
                 self.livegraphNGFrequency.set_ylabel('UK national electricity supply vs demand')
                 self.freqfmtter = FuncFormatter(self.formatFrequencyData)
-                # display the 'supply equals demand' level
-                # self.livegraphNGFrequency.axhline(y=50, color='b', linewidth=2)
 
             # create a background thread that will poll the National Grid
             #  website and return national electricity demand values
-            self.ngdClient = NationalGridUpdateThread(self)
-            self.ngdClient.start()
-        else:
+            if self.ngdClient == None:
+                self.ngdClient = NationalGridUpdateThread(self)
+                self.ngdClient.start()
+
+    #
+    # stop the download and display of national electricity frequency
+    #  data from the National Grid
+    # 
+    def stopNationalGridFrequencyData(self):
+
+        if self.showNationalGridFrequency == True:
             # we are currently showing national frequency data, but we are 
             #   about to stop
             self.showNationalGridFrequency = False
@@ -459,16 +504,38 @@ class CurrentCostLiveData():
             # stop the background thread
             self.ngdClient.stopUpdates()
 
+            # delete the background thread object
+            self.ngdClient = None
 
+    #
+    # stop the display of national electricity frequency data from the 
+    #  National Grid
+    # 
+    def pauseNationalGridFrequencyData(self):
+
+        if self.showNationalGridFrequency == True:
+            # we are currently showing national frequency data, but we are 
+            #   about to stop
+            self.showNationalGridFrequency = False
+
+
+    #
+    # custom axis label formatter - used to transform a frequency Hz value for
+    #  the National Grid power supply into it's meaning in terms of national 
+    #  electricity supply vs demand.
+    # 
+    # meaning taken from http://dynamicdemand.co.uk/grid.htm
+    # 
     def formatFrequencyData(self, x, pos=None):
-        if x == 50:
+        if x == self.NGFREQ_ZERO:
             return 'supply = demand'
-        elif x == 51:
+        elif x == 49.8:
             return 'supply > demand'
-        elif x == 49:
+        elif x == 50.2:
             return 'supply < demand'
         else:
             return ''
+
 
 # a background thread used to create an MQTT connection
 class MQTTUpdateThread(Thread):
