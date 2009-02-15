@@ -80,10 +80,16 @@ class PlotNotebook(wx.Panel):
 #  which we do not use
 # 
 class Toolbar(NavigationToolbar2Wx):    
+    # rather than copy and edit the whole (rather large) init function, we run
+    # the super-classes init function as usual, then go back and delete the 
+    # button we don't want
     def __init__(self, plotCanvas):
         CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION = 6
         NavigationToolbar2Wx.__init__(self, plotCanvas)        
         self.DeleteToolByPos(CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION) 
+    # in theory this should never get called, but in case it does (e.g. if there
+    # is a keyboard shortcut I don't know about) then we override the method 
+    # that gets called - to protect against the exceptions that it throws
     def configure_subplot(self, evt):
         print 'ERROR: This application does not support subplots'
 
