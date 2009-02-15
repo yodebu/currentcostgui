@@ -51,7 +51,6 @@ from currentcostlivedata       import CurrentCostLiveData
 from currentcostparser         import CurrentCostDataParser
 from currentcostserialconn     import CurrentCostConnection
 
-from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
 from matplotlib.patches import Rectangle, Patch
 from matplotlib.text import Text
@@ -176,6 +175,8 @@ class MyFrame(wx.Frame):
     MENU_TARGET    = None
     MENU_LIVE      = None
     MENU_MQTT_LIVE = None
+    MENU_NGDEMAND  = None
+    MENU_NGFREQ    = None
 
     #
     # these are the different graphs that we draw on
@@ -213,8 +214,8 @@ class MyFrame(wx.Frame):
         MENU_MANUAL  = wx.NewId()
         MENU_MATPLOT = wx.NewId()
         MENU_HELPDOC = wx.NewId()
-        MENU_NGDEMAND = wx.NewId()
-        MENU_NGFREQ  = wx.NewId()
+        self.MENU_NGDEMAND = wx.NewId()
+        self.MENU_NGFREQ   = wx.NewId()
 
         menuBar = wx.MenuBar()
 
@@ -225,8 +226,8 @@ class MyFrame(wx.Frame):
         self.f0.Append(self.MENU_LIVE,      "Show live data (connect directly)...", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
         self.f0.Append(self.MENU_MQTT_LIVE, "Show live data (connect via MQTT)...", "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
         self.f0.AppendSeparator()
-        self.f0.Append(MENU_NGDEMAND, "Show live national electricity demand...", "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
-        #self.f0.Append(MENU_NGFREQ, "Show live National Grid frequency...", "Show live data from the National Grid website showing the grid frequency", kind=wx.ITEM_CHECK)
+        self.f0.Append(self.MENU_NGDEMAND, "Show live national electricity demand...", "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
+        self.f0.Append(self.MENU_NGFREQ, "Show live National Grid frequency...", "Show live data from the National Grid website showing the grid frequency", kind=wx.ITEM_CHECK)
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -294,8 +295,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
         self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
         self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
-        self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=MENU_NGDEMAND)
-        self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=MENU_NGFREQ)
+        self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=self.MENU_NGDEMAND)
+        self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=self.MENU_NGFREQ)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
@@ -1014,8 +1015,13 @@ class MyFrame(wx.Frame):
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
 
+        # we cannot show demand and frequency at the same time, so we toggle
+        # between them here - switching off the frequency graphing if it was on
+        if livedataagent.showNationalGridFrequency == True:
+            livedataagent.toggleNationalGridFrequencyData(self.liveaxes)            
+            self.f0.Check(self.MENU_NGFREQ, False)
+
         livedataagent.toggleNationalGridDemandData(self.liveaxes)
-        return
 
     def onNationalGridFreq(self, event):
         global livedataagent, plotter, ccdb 
@@ -1023,8 +1029,13 @@ class MyFrame(wx.Frame):
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
 
-        livedataagent.toggleNationalGridDemandFrequency()
-        return
+        # we cannot show demand and frequency at the same time, so we toggle
+        # between them here - switching off the demand graphing if it was on
+        if livedataagent.showNationalGridDemand == True:
+            livedataagent.toggleNationalGridDemandData(self.liveaxes)            
+            self.f0.Check(self.MENU_NGDEMAND, False)
+
+        livedataagent.toggleNationalGridFrequencyData(self.liveaxes)
 
 
     #
