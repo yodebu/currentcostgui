@@ -227,7 +227,7 @@ class MyFrame(wx.Frame):
         self.f0.Append(self.MENU_MQTT_LIVE, "Show live data (connect via MQTT)...", "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
         self.f0.AppendSeparator()
         self.f0.Append(self.MENU_NGDEMAND, "Show live national electricity demand...", "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
-        self.f0.Append(self.MENU_NGFREQ, "Show live National Grid frequency...", "Show live data from the National Grid website showing the grid frequency", kind=wx.ITEM_CHECK)
+        self.f0.Append(self.MENU_NGFREQ, "Show live National Grid supply vs demand...", "Show live data from the National Grid website from the grid frequency", kind=wx.ITEM_CHECK)
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -326,7 +326,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.18"
+        info.Version = "0.9.19"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -375,7 +375,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.18":
+        elif latestversion != "0.9.19":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -846,6 +846,7 @@ class MyFrame(wx.Frame):
 
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
+            plotter.selectpage('live')
 
         if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
             # disconnect
@@ -924,6 +925,7 @@ class MyFrame(wx.Frame):
         if self.IsMQTTSupportAvailable():
             if self.liveaxes == None:
                 self.liveaxes = plotter.add('live').gca()
+                plotter.selectpage('live')
 
             if livedataagent.connectionType == livedataagent.CONNECTION_MQTT:
                 # disconnect
@@ -1014,28 +1016,63 @@ class MyFrame(wx.Frame):
 
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
+            plotter.selectpage('live')
 
         # we cannot show demand and frequency at the same time, so we toggle
         # between them here - switching off the frequency graphing if it was on
         if livedataagent.showNationalGridFrequency == True:
-            livedataagent.toggleNationalGridFrequencyData(self.liveaxes)            
+            # disable frequency graphing
+            livedataagent.pauseNationalGridFrequencyData()
+            # the National Grid data is shown on a secondary axes (created by
+            #  twinx). annoyingly, we can't remove secondary axes. 
+            # so we're stuck with having to delete the whole page, and recreate
+            #  the CurrentCost data graph we want to keep
+            # this means any existing handles to the graph axes (self.liveaxes)
+            #  will be invalid, so we have to inform every possible object 
+            #  which has cached the handle. damn.
+            plotter.deletepage('live')
+            self.liveaxes = plotter.add('live').gca()
+            plotter.selectpage('live')
+            livedataagent.prepareCurrentcostDataGraph(self.liveaxes)
+            # update the interface to show the selected graph type
             self.f0.Check(self.MENU_NGFREQ, False)
 
-        livedataagent.toggleNationalGridDemandData(self.liveaxes)
+        if livedataagent.showNationalGridDemand == True:
+            livedataagent.stopNationalGridDemandData()
+        else:
+            livedataagent.startNationalGridDemandData(self.liveaxes)
+
 
     def onNationalGridFreq(self, event):
         global livedataagent, plotter, ccdb 
 
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
+            plotter.selectpage('live')
 
         # we cannot show demand and frequency at the same time, so we toggle
         # between them here - switching off the demand graphing if it was on
         if livedataagent.showNationalGridDemand == True:
-            livedataagent.toggleNationalGridDemandData(self.liveaxes)            
+            # disable demand graphing
+            livedataagent.pauseNationalGridDemandData()
+            # the National Grid data is shown on a secondary axes (created by
+            #  twinx). annoyingly, we can't remove secondary axes. 
+            # so we're stuck with having to delete the whole page, and recreate
+            #  the CurrentCost data graph we want to keep
+            # this means any existing handles to the graph axes (self.liveaxes)
+            #  will be invalid, so we have to inform every possible object 
+            #  which has cached the handle. damn.
+            plotter.deletepage('live')
+            self.liveaxes = plotter.add('live').gca()
+            plotter.selectpage('live')
+            livedataagent.prepareCurrentcostDataGraph(self.liveaxes)
+            # update the interface to show the selected graph type
             self.f0.Check(self.MENU_NGDEMAND, False)
 
-        livedataagent.toggleNationalGridFrequencyData(self.liveaxes)
+        if livedataagent.showNationalGridFrequency == True:
+            livedataagent.stopNationalGridFrequencyData()
+        else:
+            livedataagent.startNationalGridFrequencyData(self.liveaxes)
 
 
     #
