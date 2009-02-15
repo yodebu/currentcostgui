@@ -24,7 +24,7 @@ import wx.aui
 import matplotlib as mpl
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx as Toolbar
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx 
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
 from matplotlib.patches import Rectangle, Patch
 from matplotlib.text import Text
@@ -74,6 +74,18 @@ class PlotNotebook(wx.Panel):
         page = TextPage(self.nb)
         self.nb.AddPage(page,name)
         return page
+
+#
+# we override the matplotlib toolbar class to remove the subplots function, 
+#  which we do not use
+# 
+class Toolbar(NavigationToolbar2Wx):    
+    def __init__(self, plotCanvas):
+        CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION = 6
+        NavigationToolbar2Wx.__init__(self, plotCanvas)        
+        self.DeleteToolByPos(CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION) 
+    def configure_subplot(self, evt):
+        print 'ERROR: This application does not support subplots'
 
 
 #

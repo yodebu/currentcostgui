@@ -52,7 +52,6 @@ from currentcostparser         import CurrentCostDataParser
 from currentcostserialconn     import CurrentCostConnection
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx as Toolbar
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
 from matplotlib.patches import Rectangle, Patch
 from matplotlib.text import Text
@@ -642,48 +641,30 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onConnect (self, event):
-        global ccdb, livedataagent
+        global ccdb, livedataagent, myserialconn
 
-        # we cannot have multiple connections to a serial port at the same time
-        # so if we are using the COM port to display a live data graph, we 
-        # (currently) cannot download history data
-        # 
-        # this is because the two code functions (download live and download 
-        #  history) are separate and not very compatible. at some point, I'll 
-        #  come back to this, and merge the two, so we can grab a single 
-        #  history update while still getting live data readings, removing this
-        #  restriction
-        # 
-        # in the meantime, this restriction (aka kludge) remains
-        # 
-        if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
-            confdlg = wx.MessageDialog(self,
-                                       'Please disable the live data graph (temporarily) '
-                                       'before downloading history'
-                                       '\n\n'
-                                       'The application is currently limited in '
-                                       'that it cannot reuse the connection to the '
-                                       'CurrentCost meter currently open for the '
-                                       'live data feed.',
-                                       'CurrentCost',
-                                       style=(wx.OK | wx.ICON_INFORMATION))
-            result = confdlg.ShowModal()
-            confdlg.Destroy()
-            return
+        # if already connected, we do not need to connect now
+        reuseconnection = myserialconn.isConnected()
 
-        dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
-        lastcom = ccdb.RetrieveSetting("comport")
-        if lastcom:
-            dlg.SetValue(lastcom)
-        if dlg.ShowModal() == wx.ID_OK:
-            newcom = dlg.GetValue()
-            if lastcom != newcom:
-                ccdb.StoreSetting("comport", newcom)
+        if reuseconnection == True:
             dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to local CurrentCost meter using serial connection', maximum = 11, style=wx.PD_CAN_ABORT)
-            if getDataFromCurrentCostMeter(dlg.GetValue(), dialog) == True:
+            if getDataFromCurrentCostMeter("", dialog) == True:
                 drawMyGraphs(self, dialog, False)
             dialog.Destroy()
-        dlg.Destroy()
+        else:
+            dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
+            lastcom = ccdb.RetrieveSetting("comport")
+            if lastcom:
+                dlg.SetValue(lastcom)
+            if dlg.ShowModal() == wx.ID_OK:
+                newcom = dlg.GetValue()
+                if lastcom != newcom:
+                    ccdb.StoreSetting("comport", newcom)
+                dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to local CurrentCost meter using serial connection', maximum = 11, style=wx.PD_CAN_ABORT)
+                if getDataFromCurrentCostMeter(dlg.GetValue(), dialog) == True:
+                    drawMyGraphs(self, dialog, False)
+                dialog.Destroy()
+            dlg.Destroy()
 
 
     #
@@ -860,7 +841,7 @@ class MyFrame(wx.Frame):
         
     # connecting directly 
     def onConnectLive (self, event):
-        global livedataagent, plotter, ccdb 
+        global livedataagent, plotter, ccdb, myserialconn
 
         if self.liveaxes == None:
             self.liveaxes = plotter.add('live').gca()
@@ -889,15 +870,48 @@ class MyFrame(wx.Frame):
                 if lastcom != newcom:
                     ccdb.StoreSetting("comport", newcom)
 
+                try:
+                    # connect to the CurrentCost meter
+                    #
+                    # we *hope* that the serialconn class will automatically handle what
+                    # connection settings (other than COM port number) are required for the
+                    # model of CurrentCost meter we are using
+                    #
+                    # the serialconn class does not handle serial exceptions - we need to
+                    # catch and handle these ourselves
+                    # (the only exception to this is that it will close the connection
+                    #  in the event of an error, so we do not need to do this explicitly)
+                    myserialconn.connect(newcom)
+                except serial.SerialException, msg:
+                    errdlg = wx.MessageDialog(None,
+                                              'Serial Exception: ' + str(msg),
+                                              'Failed to connect to CurrentCost meter',
+                                              style=(wx.OK | wx.ICON_EXCLAMATION))
+                    errdlg.ShowModal()
+                    errdlg.Destroy()
+                    return False
+                except:
+                    errdlg = wx.MessageDialog(None,
+                                              'CurrentCost',
+                                              'Failed to connect to CurrentCost meter',
+                                              style=(wx.OK | wx.ICON_EXCLAMATION))
+                    errdlg.ShowModal()
+                    errdlg.Destroy()
+                    return False
+
                 # create a new connection
                 livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
                                       self.liveaxes, 
                                       None, None, 
-                                      newcom)                
+                                      myserialconn)
                 
                 # update the GUI to show what the user has selected
                 self.f0.Check(self.MENU_LIVE, True)
                 self.f0.Check(self.MENU_MQTT_LIVE, False)
+            else:
+                # update the GUI to show that the user has cancelled
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)                
             dlg.Destroy()
 
 
@@ -1241,31 +1255,37 @@ def getDataFromCurrentCostMeter(portdet, dialog):
     global ccdb, myparser, myserialconn
     # 
     dialog.Update(0, 'Connecting to local CurrentCost meter - using device "' + portdet + '"')
-    ser = ""
-    try:
-        # connect to the CurrentCost meter
-        #
-        # we *hope* that the serialconn class will automatically handle what 
-        # connection settings (other than COM port number) are required for the
-        # model of CurrentCost meter we are using 
-        # 
-        # the serialconn class does not handle serial exceptions - we need to 
-        # catch and handle these ourselves
-        # (the only exception to this is that it will close the connection 
-        #  in the event of an error, so we do not need to do this explicitly)
-        myserialconn.connect(portdet)
-    except serial.SerialException, msg:
-        dialog.Update(11, 'Failed to connect to CurrentCost meter')
-        errdlg = wx.MessageDialog(None,
-                                  'Serial Exception: ' + str(msg),
-                                  'Failed to connect to CurrentCost meter', 
-                                  style=(wx.OK | wx.ICON_EXCLAMATION))
-        errdlg.ShowModal()        
-        errdlg.Destroy()
-        return False
-    except:
-        dialog.Update(11, 'Failed to connect to CurrentCost meter')
-        return False
+
+    # if already connected, we:
+    #  a) do not need to connect now
+    #  b) should not disconnect once complete
+    reuseconnection = myserialconn.isConnected()
+
+    if reuseconnection == False:
+        try:
+            # connect to the CurrentCost meter
+            #
+            # we *hope* that the serialconn class will automatically handle what 
+            # connection settings (other than COM port number) are required for the
+            # model of CurrentCost meter we are using 
+            # 
+            # the serialconn class does not handle serial exceptions - we need to 
+            # catch and handle these ourselves
+            # (the only exception to this is that it will close the connection 
+            #  in the event of an error, so we do not need to do this explicitly)
+            myserialconn.connect(portdet)
+        except serial.SerialException, msg:
+            dialog.Update(11, 'Failed to connect to CurrentCost meter')
+            errdlg = wx.MessageDialog(None,
+                                      'Serial Exception: ' + str(msg),
+                                      'Failed to connect to CurrentCost meter', 
+                                      style=(wx.OK | wx.ICON_EXCLAMATION))
+            errdlg.ShowModal()        
+            errdlg.Destroy()
+            return False
+        except:
+            dialog.Update(11, 'Failed to connect to CurrentCost meter')
+            return False
 
     # we keep trying to get an update from the CurrentCost meter
     #  until we successfully populate the CurrentCost data object
@@ -1276,8 +1296,9 @@ def getDataFromCurrentCostMeter(portdet, dialog):
     while updatesremaining > 0:
         (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost (' + str(updatesremaining) + ' update(s) remaining)')
         if tocontinue == False:
-            dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
-            myserialconn.disconnect()
+            if reuseconnection == False:
+                dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
+                myserialconn.disconnect()
             dialog.Update(11, 'Cancelled.')
             return False
 
@@ -1347,7 +1368,8 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 
     dialog.Update(2, 'Received complete history data from CurrentCost meter')
     #
-    myserialconn.disconnect()    
+    if reuseconnection == False:    
+        myserialconn.disconnect()    
     #
     return True
 
