@@ -107,7 +107,7 @@ class CurrentCostMQTTSubscriber(MqttSubscriber):
             ccreading = float(message.data)
         except:            
             self.guicallback.exitOnError('Unable to parse reading from meter: ' + str(message.data))
-            return        
+            return
         self.guicallback.updateGraph(message.data)
 
     # disconnect when complete
