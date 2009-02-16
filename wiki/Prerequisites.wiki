@@ -13,6 +13,7 @@ The app also uses a number of third-party Python modules:
   * pysqlite :: http://oss.itsystementwicklung.de/trac/pysqlite/
   * pywin32  :: http://sourceforge.net/project/showfiles.php?group_id=78018
   * setuptools :: http://pypi.python.org/pypi/setuptools/
+  * simplejson :: http://pypi.python.org/pypi/simplejson
   * wxpython  :: http://wxpython.org/download.php
 
 Most of these can be installed using easy install
