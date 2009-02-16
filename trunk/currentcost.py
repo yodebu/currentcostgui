@@ -782,7 +782,11 @@ class MyFrame(wx.Frame):
         #  provide the ability to subscribe to an MQTT topic, and we want to 
         #  look for this in the same directory where the application is stored
         currentdir = sys.path[0]
-    
+
+        # special case : py2exe-compiled apps store the zip in a different place
+        if os.path.basename(currentdir) == "library.zip":
+            currentdir = os.path.join(currentdir, "..")
+
         # location of the MQTT module
         pythonmodule = os.path.join(currentdir, "mqttClient.py")
     
