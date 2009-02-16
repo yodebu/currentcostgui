@@ -9,7 +9,7 @@ Many users of the CurrentCost GUI app already had their CurrentCost meters conne
 This also brought the benefit that the application could be used remotely - you don't even need to be at home to see the latest data from your CurrentCost meter.
 
 ==What do you need to get the MQTT support in the app to work?==
-The short version... this feature requires a third-party Python module that I am not able to re-distribute. If you work for IBM, you can get it for yourself from IIOSB.
+The short version... this feature requires a third-party Python module that I am not able to re-distribute. If you work for IBM, you can get it for yourself from IIOSB. Unzip the files from there into the same directory as the CurrentCost app.
 
 The longer version... I wanted an implementation of the MQTT client protocol for Python. Rather than write it from scratch, I reused an implementation written by other IBM employees. 
 
