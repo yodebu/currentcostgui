@@ -24,8 +24,7 @@ import datetime
 
 from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
-from threading import Thread
-
+from threading import Thread, Lock
 from currentcostcomlive import CurrentCostSerialConnection
 from nationalgriddata   import NationalGridDataSource
 
@@ -42,6 +41,7 @@ class CurrentCostLiveData():
     CONNECTION_SERIAL = 2
 
     connectionType = CONNECTION_NONE
+    closing = False
 
     #
     # which other live feeds should be shown?
@@ -94,11 +94,17 @@ class CurrentCostLiveData():
     stddatefmtter = DateFormatter('%H:%M.%S')
     freqfmtter    = None
 
+    # there can be two threads updating the graph. to avoid them both doing it 
+    #  at once, we need a thread lock
+    lock = Lock()
+
 
     #
     # redraw all active graphs
     # 
     def redrawGraph(self):
+
+        self.lock.acquire()
 
         #
         # Step 1:
@@ -110,10 +116,12 @@ class CurrentCostLiveData():
                                          self.ccreadings,
                                          'r-')
             except Exception, e:
-                print 'DEBUG: error - failed to plot data on livegraph'
-                print e
-                print str(e)
-                print str(e.message)
+                if self.closing == False:
+                    print 'DEBUG: error - failed to plot data on livegraph'
+                    print e
+                    print str(e)
+                    print str(e.message)
+                self.lock.release()
                 return False
         
         if self.livegraphNGDemand != None and len(self.ngdatadates) > 0:
@@ -126,6 +134,7 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to plot demand data on national grid graph'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
 
         if self.livegraphNGFrequency != None and len(self.ngdatadates) > 0:
@@ -145,6 +154,7 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to plot frequency data on national grid graph'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
 
         #
@@ -176,6 +186,7 @@ class CurrentCostLiveData():
             print 'DEBUG: error - failed to rotate axis labels on live graph'
             print str(e)
             print str(e.message)
+            self.lock.release()
             return False
         if self.livegraphNGDemand != None:
             try:
@@ -185,6 +196,7 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to rotate axis labels on NG demand graph'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
         if self.livegraphNGFrequency != None:
             try:
@@ -194,6 +206,7 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to rotate axis labels on NG frequency graph'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
         
         #
@@ -232,6 +245,7 @@ class CurrentCostLiveData():
             print 'DEBUG: error - failed to assign xaxis formatters'
             print str(e)
             print str(e.message)
+            self.lock.release()
             return False
         
         #
@@ -244,6 +258,7 @@ class CurrentCostLiveData():
             print 'DEBUG: error - failed to redraw live canvas'
             print str(e)
             print str(e.message)
+            self.lock.release()
             return False
         if self.livegraphNGDemand != None:
             try:
@@ -252,6 +267,7 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to redraw NG demand canvas'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
         if self.livegraphNGFrequency != None:
             try:
@@ -260,10 +276,12 @@ class CurrentCostLiveData():
                 print 'DEBUG: error - failed to redraw NG frequency canvas'
                 print str(e)
                 print str(e.message)
+                self.lock.release()
                 return False
         
         #
         # graph redraw complete
+        self.lock.release()
         return True
 
 
@@ -333,6 +351,8 @@ class CurrentCostLiveData():
     #  existing graph should be left untouched
     # 
     def disconnect(self):
+        self.closing = True
+        
         if self.connectionType == self.CONNECTION_MQTT:
             if self.mqttClient != None:
                 self.mqttClient.Disconnect()
