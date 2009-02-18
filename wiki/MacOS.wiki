@@ -6,6 +6,7 @@ Taken from comments on http://dalelane.co.uk/blog/?p=297
 
 At some point, I'll write this into clearer guidance, but in the meantime thought it was useful to share even in this form.
 
+There are also some step-by-step instructions available here http://nicktaylor.co.uk/2009/02/18/my-first-electricity-graph/ that look like they are worth trying.
 
 = Details =
 
