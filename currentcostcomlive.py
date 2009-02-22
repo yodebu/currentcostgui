@@ -39,6 +39,8 @@ import string
 
 class CurrentCostSerialConnection():
 
+    numberOfErrors = 0
+
     #
     # Establish a connection to the CurrentCost meter
     # 
@@ -46,6 +48,7 @@ class CurrentCostSerialConnection():
 
         self.ser = comportobj
         self.toCancel = False
+        self.numberOfErrors = 0
         
         #
         # look for the current reading in the data
@@ -65,8 +68,18 @@ class CurrentCostSerialConnection():
                             ccreading = float(float(substr) / 1000)
                             guihandle.updateGraph(ccreading)
                         except:            
-                            guihandle.exitOnError('Unable to parse reading from meter: ' + str(substr))
-                            return
+                            # Exiting on a single garbled string from the 
+                            #  serial port is a bit extreme - it isn't unusual 
+                            #  to get a partial string, particularly if we've 
+                            #  been reading from the serial port for a few 
+                            #  hours
+                            # So we count the number of times we hit an error
+                            #  and only exit after we see ten of them
+                            if self.numberOfErrors < 10:
+                                self.numberOfErrors += 1
+                            else:
+                                guihandle.exitOnError('Unable to parse reading from meter: ' + str(substr))
+                                return
             except Exception, exception:
                 if self.toCancel == False:
                     guihandle.exitOnError('Error reading from COM port: ' + str(exception))

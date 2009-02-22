@@ -305,7 +305,7 @@ class CurrentCostLiveData():
     def prepareCurrentcostDataGraph(self, graphaxes):
         # prepare graph for drawing
         self.livegraph = graphaxes
-        self.livegraph.set_ylabel('kWh')
+        self.livegraph.set_ylabel('kW')
         self.livegraph.grid(True)
         self.livegraph.set_autoscale_on = False
 
