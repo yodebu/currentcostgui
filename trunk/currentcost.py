@@ -898,6 +898,8 @@ class MyFrame(wx.Frame):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()
                 errdlg.Destroy()
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
                 return False
             except:
                 errdlg = wx.MessageDialog(None,
@@ -906,6 +908,8 @@ class MyFrame(wx.Frame):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()
                 errdlg.Destroy()
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
                 return False
 
             # create a new connection
@@ -963,6 +967,8 @@ class MyFrame(wx.Frame):
                 dlg.SetValue('204.146.213.96')
             if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
                 return False
             ipaddr = dlg.GetValue()
             if lastipaddr != ipaddr:
@@ -981,6 +987,8 @@ class MyFrame(wx.Frame):
                 dlg.SetValue('PowerMeter/CC/YourUserNameHere')
             if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
+                self.f0.Check(self.MENU_LIVE, False)
+                self.f0.Check(self.MENU_MQTT_LIVE, False)
                 return False
             topicString = dlg.GetValue()
             if lasttopicstring != topicString:
