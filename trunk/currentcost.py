@@ -168,67 +168,100 @@ graphunits = "kWh"
 myserialconn = CurrentCostConnection()
 
 class MyFrame(wx.Frame):
-    f0 = None
+    MENU_HISTORY = None
     f1 = None
     mnuTarget = None
     MENU_SHOWKWH   = None
     MENU_SHOWGBP   = None
     MENU_TARGET    = None
-    MENU_LIVE      = None
-    MENU_MQTT_LIVE = None
-    MENU_NGDEMAND  = None
-    MENU_NGFREQ    = None
+    MENU_LIVE_COM  = None
+    MENU_LIVE_MQTT = None
+    MENU_LIVE_DEMAND  = None
+    MENU_LIVE_SUPPLY    = None
 
     #
     # these are the different graphs that we draw on
     trendspg = None    # trends
-    axes1 = None       # hours
-    axes2 = None       # days   
-    axes3 = None       # months
-    axes4 = None       # average day
-    axes5 = None       # average week
+    axes1    = None    # hours
+    axes2    = None    # days   
+    axes3    = None    # months
+    axes4    = None    # average day
+    axes5    = None    # average week
     liveaxes = None    # live data
 
     def Build_Menus(self):
         global ccdb
 
-        MENU_HELP    = wx.NewId()
-        MENU_CONFIG  = wx.NewId()
-        MENU_MQTT    = wx.NewId()
-        self.MENU_LIVE    = wx.NewId()
-        self.MENU_MQTT_LIVE = wx.NewId()
-        MENU_LOADDB  = wx.NewId()
-        self.MENU_SHOWKWH = wx.NewId()
-        self.MENU_SHOWGBP = wx.NewId()
-        self.MENU_TARGET  = wx.NewId()
-        MENU_EXPORT1 = wx.NewId()
-        MENU_EXPORT2 = wx.NewId()
-        MENU_EXPORT3 = wx.NewId()
-        MENU_SYNC    = wx.NewId()
-        MENU_UPLOAD  = wx.NewId()
-        MENU_DNLOAD  = wx.NewId()
-        MENU_ACCNT   = wx.NewId()
-        MENU_PROFILE = wx.NewId()
-        MENU_COMPARE = wx.NewId()
-        MENU_UPDATES = wx.NewId()
-        MENU_BUGREPT = wx.NewId()
-        MENU_MANUAL  = wx.NewId()
-        MENU_MATPLOT = wx.NewId()
-        MENU_HELPDOC = wx.NewId()
-        self.MENU_NGDEMAND = wx.NewId()
-        self.MENU_NGFREQ   = wx.NewId()
+        #
+        # menu structure
+        # 
+        #  Download History                                         MENU_HISTORY
+        #           |
+        #           +---  Download once                              MENU_HIST_1
+        #           |         |
+        #           |         +---  Download via serial port     MENU_HIST_1_COM
+        #           |         +---  Download via MQTT           MENU_HIST_1_MQTT
+        #           |
+        #           +---  Stay connected                             MENU_HIST_S
+        #                     |
+        #                     +---  Download via serial port     MENU_HIST_S_COM
+        #                     +---  Download via MQTT           MENU_HIST_S_MQTT
+        # 
+        #  Show live data                                              MENU_LIVE
+        #           |
+        #           +---  Connect via serial port                  MENU_LIVE_COM
+        #           +---  Connect via MQTT                        MENU_LIVE_MQTT
+        #           |
+        #           +---  Show live demand                      MENU_LIVE_DEMAND
+        #           +---  Show supply vs demand                 MENU_LIVE_SUPPLY
+        # 
+        # 
+        # 
+
+        MENU_HELP               = wx.NewId()
+        MENU_HIST_1_COM         = wx.NewId()
+        MENU_HIST_1_MQTT        = wx.NewId()
+        MENU_HIST_S_COM         = wx.NewId()
+        MENU_HIST_S_MQTT        = wx.NewId()
+        self.MENU_LIVE_COM      = wx.NewId()
+        self.MENU_LIVE_MQTT     = wx.NewId()
+        self.MENU_LIVE_DEMAND   = wx.NewId()
+        self.MENU_LIVE_SUPPLY   = wx.NewId()
+        MENU_LOADDB             = wx.NewId()
+        self.MENU_SHOWKWH       = wx.NewId()
+        self.MENU_SHOWGBP       = wx.NewId()
+        self.MENU_TARGET        = wx.NewId()
+        MENU_EXPORT1            = wx.NewId()
+        MENU_EXPORT2            = wx.NewId()
+        MENU_EXPORT3            = wx.NewId()
+        MENU_SYNC               = wx.NewId()
+        MENU_UPLOAD             = wx.NewId()
+        MENU_DNLOAD             = wx.NewId()
+        MENU_ACCNT              = wx.NewId()
+        MENU_PROFILE            = wx.NewId()
+        MENU_COMPARE            = wx.NewId()
+        MENU_UPDATES            = wx.NewId()
+        MENU_BUGREPT            = wx.NewId()
+        MENU_MANUAL             = wx.NewId()
+        MENU_MATPLOT            = wx.NewId()
+        MENU_HELPDOC            = wx.NewId()
 
         menuBar = wx.MenuBar()
 
-        self.f0 = wx.Menu()
-        self.f0.Append(MENU_CONFIG, "Download history (connect directly)...", "Connect to a CurrentCost meter and download CurrentCost history data")
-        self.f0.Append(MENU_MQTT,   "Download history (connect via MQTT)...", "Receive CurrentCost history data from an MQTT-compatible message broker")
-        self.f0.AppendSeparator()
-        self.f0.Append(self.MENU_LIVE,      "Show live data (connect directly)...", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
-        self.f0.Append(self.MENU_MQTT_LIVE, "Show live data (connect via MQTT)...", "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
-        self.f0.AppendSeparator()
-        self.f0.Append(self.MENU_NGDEMAND, "Show live national electricity demand...", "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
-        self.f0.Append(self.MENU_NGFREQ, "Show live National Grid supply vs demand...", "Show live data from the National Grid website from the grid frequency", kind=wx.ITEM_CHECK)
+        self.MENU_HISTORY = wx.Menu()
+        self.MENU_HIST_1  = wx.Menu()
+        self.MENU_HIST_1.Append(MENU_HIST_1_COM,  "Download via serial port", "Connect to a CurrentCost meter and download CurrentCost history data")
+        self.MENU_HIST_1.Append(MENU_HIST_1_MQTT, "Download via MQTT",        "Receive CurrentCost history data from an MQTT-compatible message broker")
+        self.MENU_HIST_S  = wx.Menu()
+        self.MENU_HIST_S.Append(MENU_HIST_S_COM,  "Download via serial port", "Connect to a CurrentCost meter and download CurrentCost history data")
+        self.MENU_HIST_S.Append(MENU_HIST_S_MQTT, "Download via MQTT",        "Receive CurrentCost history data from an MQTT-compatible message broker")
+
+        self.MENU_LIVE = wx.Menu()        
+        self.MENU_LIVE.Append(self.MENU_LIVE_COM,  "Connect via serial port", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
+        self.MENU_LIVE.Append(self.MENU_LIVE_MQTT, "Connect via MQTT",        "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
+        self.MENU_LIVE.AppendSeparator()
+        self.MENU_LIVE.Append(self.MENU_LIVE_DEMAND, "National electricity demand",    "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
+        self.MENU_LIVE.Append(self.MENU_LIVE_SUPPLY, "National Grid supply vs demand", "Show live data from the National Grid website from the grid frequency", kind=wx.ITEM_CHECK)
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -266,38 +299,44 @@ class MyFrame(wx.Frame):
         f4.Append(MENU_HELPDOC, "General help", "See general documentation about the app")
 
 
-        menuBar.Append(self.f0, "&Download data")
-        menuBar.Append(self.f1, "&Data")
-        menuBar.Append(f2, "&Export")
-        menuBar.Append(f3, "&Web")
-        menuBar.Append(f4, "&Help")
+        self.MENU_HISTORY.AppendMenu(-1, "Download once",  self.MENU_HIST_1)
+        self.MENU_HISTORY.AppendMenu(-1, "Stay connected", self.MENU_HIST_S)
+
+        menuBar.Append(self.MENU_HISTORY, "Download history")
+        menuBar.Append(self.MENU_LIVE,    "Show live data")
+        menuBar.Append(self.f1,           "Data")
+        menuBar.Append(f2,                "Export")
+        menuBar.Append(f3,                "Web")
+        menuBar.Append(f4,                "Help")
 
         self.SetMenuBar(menuBar)
 
-        self.Bind(wx.EVT_MENU, self.onAbout,           id=MENU_HELP)
-        self.Bind(wx.EVT_MENU, self.onConnect,         id=MENU_CONFIG)
-        self.Bind(wx.EVT_MENU, self.onMQTTSubscribe,   id=MENU_MQTT)
-        self.Bind(wx.EVT_MENU, self.onConnectLive,     id=self.MENU_LIVE)
-        self.Bind(wx.EVT_MENU, self.onMQTTConnectLive, id=self.MENU_MQTT_LIVE)
-        self.Bind(wx.EVT_MENU, self.onExportHours,     id=MENU_EXPORT1)
-        self.Bind(wx.EVT_MENU, self.onExportDays,      id=MENU_EXPORT2)
-        self.Bind(wx.EVT_MENU, self.onExportMonths,    id=MENU_EXPORT3)
-        self.Bind(wx.EVT_MENU, self.onUploadData,      id=MENU_UPLOAD)
-        self.Bind(wx.EVT_MENU, self.onDownloadData,    id=MENU_DNLOAD)
-        self.Bind(wx.EVT_MENU, self.onSyncData,        id=MENU_SYNC)
-        self.Bind(wx.EVT_MENU, self.onCompareUsers,    id=MENU_COMPARE)
-        self.Bind(wx.EVT_MENU, self.onManageAcct,      id=MENU_ACCNT)
-        self.Bind(wx.EVT_MENU, self.onManageAcct,      id=MENU_PROFILE)
-        self.Bind(wx.EVT_MENU, self.onUpdatesCheck,    id=MENU_UPDATES)
-        self.Bind(wx.EVT_MENU, self.onShowWebsite,     id=MENU_BUGREPT)
-        self.Bind(wx.EVT_MENU, self.onShowKWH,         id=self.MENU_SHOWKWH)
-        self.Bind(wx.EVT_MENU, self.onShowGBP,         id=self.MENU_SHOWGBP)
-        self.Bind(wx.EVT_MENU, self.onSetUsageTarget,  id=self.MENU_TARGET)
-        self.Bind(wx.EVT_MENU, self.getDataFromXML,    id=MENU_MANUAL)
-        self.Bind(wx.EVT_MENU, self.openMatplotlibUrl, id=MENU_MATPLOT)
-        self.Bind(wx.EVT_MENU, self.openHelpUrl,       id=MENU_HELPDOC)
-        self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=self.MENU_NGDEMAND)
-        self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=self.MENU_NGFREQ)
+        self.Bind(wx.EVT_MENU, self.onAbout,              id=MENU_HELP)
+        self.Bind(wx.EVT_MENU, self.onDownloadOnceSerial, id=MENU_HIST_1_COM)
+        self.Bind(wx.EVT_MENU, self.onDownloadOnceMQTT,   id=MENU_HIST_1_MQTT)
+        self.Bind(wx.EVT_MENU, self.onDownloadOnceSerial, id=MENU_HIST_S_COM)     # temporary - until implemented
+        self.Bind(wx.EVT_MENU, self.onDownloadOnceMQTT,   id=MENU_HIST_S_MQTT)    # temporary - until implemented
+        self.Bind(wx.EVT_MENU, self.onLiveConnectSerial,  id=self.MENU_LIVE_COM)
+        self.Bind(wx.EVT_MENU, self.onLiveConnectMQTT,    id=self.MENU_LIVE_MQTT)
+        self.Bind(wx.EVT_MENU, self.onExportHours,        id=MENU_EXPORT1)
+        self.Bind(wx.EVT_MENU, self.onExportDays,         id=MENU_EXPORT2)
+        self.Bind(wx.EVT_MENU, self.onExportMonths,       id=MENU_EXPORT3)
+        self.Bind(wx.EVT_MENU, self.onUploadData,         id=MENU_UPLOAD)
+        self.Bind(wx.EVT_MENU, self.onDownloadData,       id=MENU_DNLOAD)
+        self.Bind(wx.EVT_MENU, self.onSyncData,           id=MENU_SYNC)
+        self.Bind(wx.EVT_MENU, self.onCompareUsers,       id=MENU_COMPARE)
+        self.Bind(wx.EVT_MENU, self.onManageAcct,         id=MENU_ACCNT)
+        self.Bind(wx.EVT_MENU, self.onManageAcct,         id=MENU_PROFILE)
+        self.Bind(wx.EVT_MENU, self.onUpdatesCheck,       id=MENU_UPDATES)
+        self.Bind(wx.EVT_MENU, self.onShowWebsite,        id=MENU_BUGREPT)
+        self.Bind(wx.EVT_MENU, self.onShowKWH,            id=self.MENU_SHOWKWH)
+        self.Bind(wx.EVT_MENU, self.onShowGBP,            id=self.MENU_SHOWGBP)
+        self.Bind(wx.EVT_MENU, self.onSetUsageTarget,     id=self.MENU_TARGET)
+        self.Bind(wx.EVT_MENU, self.getDataFromXML,       id=MENU_MANUAL)
+        self.Bind(wx.EVT_MENU, self.openMatplotlibUrl,    id=MENU_MATPLOT)
+        self.Bind(wx.EVT_MENU, self.openHelpUrl,          id=MENU_HELPDOC)
+        self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=self.MENU_LIVE_DEMAND)
+        self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=self.MENU_LIVE_SUPPLY)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
@@ -642,7 +681,7 @@ class MyFrame(wx.Frame):
     #  if data is successfully retrieved, then redraw the graphs using the new
     #   data
     # 
-    def onConnect (self, event):
+    def onDownloadOnceSerial (self, event):
         global ccdb, livedataagent, myserialconn
 
         # if already connected, we do not need to connect now
@@ -675,7 +714,7 @@ class MyFrame(wx.Frame):
     #  if data is successfully retrieved, then redraw the graphs using the new
     #   data
     # 
-    def onMQTTSubscribe (self, event):
+    def onDownloadOnceMQTT (self, event):
         global ccdb, mqttupd
 
         if self.IsMQTTSupportAvailable():
@@ -835,8 +874,8 @@ class MyFrame(wx.Frame):
     #   new thread to keep it up to date
 
     def displayLiveConnectFailure(self, message):
-        self.f0.Check(self.MENU_LIVE, False)
-        self.f0.Check(self.MENU_MQTT_LIVE, False)
+        self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+        self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
         errdlg = wx.MessageDialog(self,
                                   message,
                                   'CurrentCost - live tab',
@@ -846,7 +885,7 @@ class MyFrame(wx.Frame):
 
         
     # connecting directly 
-    def onConnectLive (self, event):
+    def onLiveConnectSerial (self, event):
         global livedataagent, plotter, ccdb, myserialconn
 
         if self.liveaxes == None:
@@ -857,8 +896,8 @@ class MyFrame(wx.Frame):
             # disconnect
             livedataagent.disconnect()
             # update the GUI to show what the user has selected
-            self.f0.Check(self.MENU_LIVE, False)
-            self.f0.Check(self.MENU_MQTT_LIVE, False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
             return
 
         if livedataagent.connectionType == livedataagent.CONNECTION_MQTT:
@@ -898,8 +937,8 @@ class MyFrame(wx.Frame):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()
                 errdlg.Destroy()
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
                 return False
             except:
                 errdlg = wx.MessageDialog(None,
@@ -908,8 +947,8 @@ class MyFrame(wx.Frame):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()
                 errdlg.Destroy()
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
                 return False
 
             # create a new connection
@@ -919,18 +958,18 @@ class MyFrame(wx.Frame):
                                   myserialconn)
             
             # update the GUI to show what the user has selected
-            self.f0.Check(self.MENU_LIVE, True)
-            self.f0.Check(self.MENU_MQTT_LIVE, False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_COM,  True)
+            self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
         else:
             # update the GUI to show that the user has cancelled
-            self.f0.Check(self.MENU_LIVE, False)
-            self.f0.Check(self.MENU_MQTT_LIVE, False)                
+            self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)                
         dlg.Destroy()
 
 
 
     # connecting via MQTT
-    def onMQTTConnectLive (self, event):
+    def onLiveConnectMQTT (self, event):
         global livedataagent, plotter, ccdb
 
         if self.IsMQTTSupportAvailable():
@@ -942,8 +981,8 @@ class MyFrame(wx.Frame):
                 # disconnect
                 livedataagent.disconnect()
                 # update the GUI to show what the user has selected
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
                 return
 
             if livedataagent.connectionType == livedataagent.CONNECTION_SERIAL:
@@ -967,8 +1006,8 @@ class MyFrame(wx.Frame):
                 dlg.SetValue('204.146.213.96')
             if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
                 return False
             ipaddr = dlg.GetValue()
             if lastipaddr != ipaddr:
@@ -987,8 +1026,8 @@ class MyFrame(wx.Frame):
                 dlg.SetValue('PowerMeter/CC/YourUserNameHere')
             if dlg.ShowModal() != wx.ID_OK:
                 dlg.Destroy()
-                self.f0.Check(self.MENU_LIVE, False)
-                self.f0.Check(self.MENU_MQTT_LIVE, False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+                self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)
                 return False
             topicString = dlg.GetValue()
             if lasttopicstring != topicString:
@@ -1002,8 +1041,8 @@ class MyFrame(wx.Frame):
                                   None)                
             
             # update the GUI to show what the user has selected
-            self.f0.Check(self.MENU_LIVE, False)
-            self.f0.Check(self.MENU_MQTT_LIVE, True)            
+            self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, True)            
         else:
             dlg = wx.MessageDialog(self,
                                    "Connecting via MQTT requires the use of a third-party module. "
@@ -1015,8 +1054,8 @@ class MyFrame(wx.Frame):
             dlg.Destroy()
 
             # update the GUI to show what the user has selected
-            self.f0.Check(self.MENU_LIVE, False)
-            self.f0.Check(self.MENU_MQTT_LIVE, False)  
+            self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)  
 
         return
 
@@ -1052,7 +1091,7 @@ class MyFrame(wx.Frame):
             plotter.selectpage('live')
             livedataagent.prepareCurrentcostDataGraph(self.liveaxes)
             # update the interface to show the selected graph type
-            self.f0.Check(self.MENU_NGFREQ, False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_SUPPLY, False)
 
         if livedataagent.showNationalGridDemand == True:
             livedataagent.stopNationalGridDemandData()
@@ -1084,7 +1123,7 @@ class MyFrame(wx.Frame):
             plotter.selectpage('live')
             livedataagent.prepareCurrentcostDataGraph(self.liveaxes)
             # update the interface to show the selected graph type
-            self.f0.Check(self.MENU_NGDEMAND, False)
+            self.MENU_LIVE.Check(self.MENU_LIVE_DEMAND, False)
 
         if livedataagent.showNationalGridFrequency == True:
             livedataagent.stopNationalGridFrequencyData()
