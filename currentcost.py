@@ -124,8 +124,15 @@ from matplotlib.text import Text
 #                                     from a remote CurrentCost meter via MQTT
 #   currentcostcomlive.py        - downloads live data for the live graph 
 #                                     from a CurrentCost meter
+#   currentcosthistorydata       - implements a download manager to handle 
+#                                     background downloading of history data
+#   currentcostmqtthistory.py    - downloads historical data if downloading 
+#                                     all updates in background via MQTT
+#   currentcostcomhistory.py     - downloads historical data if downloading 
+#                                     all updates in background 
 #   nationalgriddata.py          - downloads live national electricity usage 
 #                                     data from the National Grid realtime feed
+# 
 # 
 ############################################################################
 
@@ -413,7 +420,7 @@ class MyFrame(wx.Frame):
         webbrowser.open_new_tab('http://currentcost.appspot.com/profile')
 
     def onShowWebsite(self, event):
-        webbrowser.open_new_tab('http://code.google.com/p/currentcostgui/')
+        webbrowser.open_new_tab('http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui')
 
     def openMatplotlibUrl(self, event):
         webbrowser.open_new_tab('http://matplotlib.sourceforge.net/users/navigation_toolbar.html')
