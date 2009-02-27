@@ -29,6 +29,7 @@ from Queue     import Queue
 
 from currentcostdb            import CurrentCostDB
 from currentcostdatafunctions import CurrentCostDataFunctions
+from currentcostcomhistory    import CurrentCostSerialHistoryConnection
 
 #
 # 
@@ -158,14 +159,16 @@ class MQTTUpdateThread(Thread):
 
 # a background thread used to create a serial connection
 class SerialUpdateThread(Thread):
-    def __init__(self, comclienthandle, comportclass, liveagent):
+    def __init__(self, comclienthandle, comportclass, liveagent, dbfilepath):
         Thread.__init__(self)
         self.comClient = comclienthandle
         self.comport = comportclass
         self.graphhandle = liveagent
+        self.dblocation = dbfilepath
     def run(self):
         res = self.comClient.EstablishConnection(self.comport, 
-                                                 self.graphhandle)
+                                                 self.graphhandle,
+                                                 self.dblocation)
 
 
 # a background thread used to insert data into the database
