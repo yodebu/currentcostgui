@@ -11,7 +11,7 @@ The previous version of the CurrentCost monitor outputs a full copy of it's reco
 
 (The main benefit of this is that you can still get all the graphs, without needing to leave your PC switched on all the time^{3}^.)
 
-The CC128 works differently. It *doesn't* output full history every six seconds - it only outputs it at 1 minute past every hour. (e.g. 12.01, 1.01, 2.01, etc.). 
+The CC128 works differently. It *doesn't* output full history every six seconds - it only outputs it at 1 minute past every odd hour. (e.g. 1.01, 3.01, 5.01, etc.). 
 
 And it doesn't output the whole history in one message - it splits it up into several^{4}^ messages, each bit output every six seconds. You need to wait for all of the messages to get the full history.
 
@@ -34,7 +34,7 @@ And it doesn't output the whole history in one message - it splits it up into se
 
 If you have a CC128 meter, you should click on 'Download data' --> 'Stay connected' *and then* either:
 
-a) Leave it running until at least 1 minute past the hour; or
+a) Leave it running until at least 1 minute past an odd numbered hour; or
 
 b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^~~
 
