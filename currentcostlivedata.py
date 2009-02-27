@@ -291,12 +291,13 @@ class CurrentCostLiveData():
     #  the new reading is appended to the set, and the graph is refreshed
     # 
     def updateGraph(self, ccreading):
-        # store the new reading
-        self.ccdates.append(datetime.datetime.now())
-        self.ccreadings.append(ccreading)
-
-        # redraw the graph with the new reading
-        self.redrawGraph()
+        if ccreading > 0:
+            # store the new reading
+            self.ccdates.append(datetime.datetime.now())
+            self.ccreadings.append(ccreading)
+    
+            # redraw the graph with the new reading
+            self.redrawGraph()
 
 
     #
