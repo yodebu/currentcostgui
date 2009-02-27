@@ -998,7 +998,7 @@ class MyFrame(wx.Frame):
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
                 self.stopBackgroundGraphing()
-        dlg.Destroy()
+            dlg.Destroy()
 
 
 
@@ -1232,7 +1232,7 @@ class MyFrame(wx.Frame):
                 # update the GUI to show that the user has cancelled
                 self.MENU_LIVE.Check(self.MENU_LIVE_COM,  False)
                 self.MENU_LIVE.Check(self.MENU_LIVE_MQTT, False)                
-        dlg.Destroy()
+            dlg.Destroy()
 
 
 
