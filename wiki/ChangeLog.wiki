@@ -2,6 +2,7 @@
 
 See [Features] for a description of features added
 
+||0.9.20 || Added ability to automatically download new updates by either serial port or MQTT ||
 ||0.9.19 || Added feed of UK national electricity supply vs demand to live graphs ||
 ||0.9.18 || Added support for the new CC128 CurrentCost meter ||
 ||0.9.17 || Added feed of UK national electricity demand to live graphs ||
