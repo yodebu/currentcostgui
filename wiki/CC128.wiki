@@ -49,7 +49,7 @@ I am redesigning the download-data/redraw-graphs code, to move away from the do-
 
 The software will let you connect to the meter once and leave the connection open. Rather than putting up a progress bar and making the user wait until all of the messages have been received^{6}^, this will be done silently in the background. 
 
-Once the updates are complete, if/when the software receives history data from the meter, the graphs will be updated and refreshed. 
+Once my changes to the code are complete, if/when the software receives history data from the meter, the graphs will be updated and refreshed. 
 
 As long as the application is running and connected at 1 minute past the hour, then it will receive updated data - without you needing to time your connection^{2}^ just right! And if you miss one history window, it doesn't matter - the meter stores the data for ages, so you can always let the software catch the next one.
 
