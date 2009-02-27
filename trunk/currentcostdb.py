@@ -36,11 +36,16 @@ class CurrentCostDB():
     # connection to the database
     connection = None
 
+    # what is the path to the database used to store CurrentCost data?
+    dbLocation = ""
+
     # connect to the database
     #
     # create tables if not already found
     # 
     def InitialiseDB(self, dbfilepath):
+        self.dbLocation = dbfilepath
+
         self.connection = sqlite.connect(dbfilepath, detect_types=sqlite.PARSE_DECLTYPES|sqlite.PARSE_COLNAMES)
         cursor = self.connection.cursor()
 
