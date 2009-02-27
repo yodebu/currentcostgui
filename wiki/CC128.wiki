@@ -16,26 +16,40 @@ The CC128 works differently. It *doesn't* output full history every six seconds 
 And it doesn't output the whole history in one message - it splits it up into several^{4}^ messages, each bit output every six seconds. You need to wait for all of the messages to get the full history.
 
 =How the software works now=
-As a first, quick attempt to get the software to work with the new meter, I only updated the parser (to handle the new data format^{7}^) and added the ability to wait for multiple messages and reconstruct the history from several bits. The overall approach is still the same.
+~~As a first, quick attempt to get the software to work with the new meter, I only updated the parser (to handle the new data format^{7}^) and added the ability to wait for multiple messages and reconstruct the history from several bits. The overall approach is still the same.~~
 
-You still need to tell the app to connect to the meter long enough to receive the history^{2}^, after which time it will disconnect.
+~~You still need to tell the app to connect to the meter long enough to receive the history^{2}^, after which time it will disconnect.~~
 
-However, for this to work, the meter needs to be outputting history data when you do this.
+~~However, for this to work, the meter needs to be outputting history data when you do this.~~
 
-Which means you either:
+~~Which means you either:
 
-a) Do this at 1 minute past the hour; or
+~~a) Do this at 1 minute past the hour; or~~
 
-b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^
+~~b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^~~
 
-Note that it's a little fiddly - the meter has to already be outputting history data at the point where the software connects, otherwise the software assumes that the meter has no history and/or has finished outputting it. 
+~~Note that it's a little fiddly - the meter has to already be outputting history data at the point where the software connects, otherwise the software assumes that the meter has no history and/or has finished outputting it.~~
+
+'Download data' --> 'Stay connected' was added to make life easier with the CC128.
+
+If you have a CC128 meter, you should click on 'Download data' --> 'Stay connected' *and then* either:
+
+a) Leave it running until at least 1 minute past the hour; or
+
+b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^~~
+
+History data will be received and stored in the background. However, graphs will not be updated with the new data until you restart the app, or manually refresh the graphs using 'Download History' -> 'Stay connected' -> 'Redraw graphs'
+
+_This is a temporary limitation - future versions of the application will update graphs automatically._
 
 =Looking ahead=
-This is obviously not ideal - it's enough so that if you have a CC128, you can get the software to draw graphs from it, but it's not a long-term solution.
+I am in the process of re-writing the code to better support CC128 meters. 
 
-The aim is to redesign the download-data/redraw-graphs code, to move away from the do-it-all-at-once-when-user-requests approach. 
+I am redesigning the download-data/redraw-graphs code, to move away from the do-it-all-at-once-when-user-requests approach. 
 
-Once this is complete, the software will let you connect to the meter once and leave the connection open. Rather than putting up a progress bar and making the user wait until all of the messages have been received^{6}^, this will be done silently in the background. If/when the software receives history data from the meter, the graphs will be updated and refreshed. 
+The software will let you connect to the meter once and leave the connection open. Rather than putting up a progress bar and making the user wait until all of the messages have been received^{6}^, this will be done silently in the background. 
+
+Once the updates are complete, if/when the software receives history data from the meter, the graphs will be updated and refreshed. 
 
 As long as the application is running and connected at 1 minute past the hour, then it will receive updated data - without you needing to time your connection^{2}^ just right! And if you miss one history window, it doesn't matter - the meter stores the data for ages, so you can always let the software catch the next one.
 
