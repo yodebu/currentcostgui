@@ -64,6 +64,12 @@
 #                                     from a remote CurrentCost meter via MQTT
 #   currentcostcomlive.py        - downloads live data for the live graph 
 #                                     from a CurrentCost meter
+#   currentcosthistorydata       - implements a download manager to handle 
+#                                     background downloading of history data
+#   currentcostmqtthistory.py    - downloads historical data if downloading 
+#                                     all updates in background via MQTT
+#   currentcostcomhistory.py     - downloads historical data if downloading 
+#                                     all updates in background 
 #   nationalgriddata.py          - downloads live national electricity usage 
 #                                     data from the National Grid realtime feed
 # 
