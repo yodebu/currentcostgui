@@ -321,8 +321,8 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onAbout,              id=MENU_HELP)
         self.Bind(wx.EVT_MENU, self.onDownloadOnceSerial, id=MENU_HIST_1_COM)
         self.Bind(wx.EVT_MENU, self.onDownloadOnceMQTT,   id=MENU_HIST_1_MQTT)
-        self.Bind(wx.EVT_MENU, self.onDownloadOnceSerial, id=self.MENU_HIST_S_COM)     # temporary - until implemented
-        self.Bind(wx.EVT_MENU, self.onDownloadAllMQTT,    id=self.MENU_HIST_S_MQTT)    # temporary - until implemented
+        self.Bind(wx.EVT_MENU, self.onDownloadAllSerial,  id=self.MENU_HIST_S_COM)
+        self.Bind(wx.EVT_MENU, self.onDownloadAllMQTT,    id=self.MENU_HIST_S_MQTT)
         self.Bind(wx.EVT_MENU, self.onLiveConnectSerial,  id=self.MENU_LIVE_COM)
         self.Bind(wx.EVT_MENU, self.onLiveConnectMQTT,    id=self.MENU_LIVE_MQTT)
         self.Bind(wx.EVT_MENU, self.onExportHours,        id=MENU_EXPORT1)
@@ -877,9 +877,104 @@ class MyFrame(wx.Frame):
     # 
     # 
 
+    # connecting directly 
+    def onDownloadAllSerial (self, event):
+        global historydataagent, ccdb, myserialconn
+
+        if historydataagent.connectionType == historydataagent.CONNECTION_SERIAL:
+            # disconnect
+            historydataagent.disconnect()
+            # update the GUI to show what the user has selected
+            self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
+            self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+            return
+
+        if historydataagent.connectionType == historydataagent.CONNECTION_MQTT:
+            # disconnect any existing connection
+            historydataagent.disconnect()
+
+
+        # if already connected, we do not need to connect now
+        reuseconnection = myserialconn.isConnected()
+
+        if reuseconnection == True:
+            # create a data connection
+            historydataagent.connect(self, ccdb.dbLocation,
+                                     historydataagent.CONNECTION_SERIAL, 
+                                     None, None, # arguments used by CONNECTION_MQTT
+                                     myserialconn)
+            
+            # update the GUI to show what the user has selected
+            self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  True)
+            self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+        else:
+            # serial port not already connected, so we need to connect now
+            #
+            # get information from the user required to establish the connection
+            #  prefill with setting from database if possible
+            #
+            dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
+            lastcom = ccdb.RetrieveSetting("comport")
+            if lastcom:
+                dlg.SetValue(lastcom)
+            if dlg.ShowModal() == wx.ID_OK:
+                newcom = dlg.GetValue()
+                if lastcom != newcom:
+                    ccdb.StoreSetting("comport", newcom)
+    
+                try:
+                    # connect to the CurrentCost meter
+                    #
+                    # we *hope* that the serialconn class will automatically handle what
+                    # connection settings (other than COM port number) are required for the
+                    # model of CurrentCost meter we are using
+                    #
+                    # the serialconn class does not handle serial exceptions - we need to
+                    # catch and handle these ourselves
+                    # (the only exception to this is that it will close the connection
+                    #  in the event of an error, so we do not need to do this explicitly)
+                    myserialconn.connect(newcom)
+                except serial.SerialException, msg:
+                    errdlg = wx.MessageDialog(None,
+                                              'Serial Exception: ' + str(msg),
+                                              'Failed to connect to CurrentCost meter',
+                                              style=(wx.OK | wx.ICON_EXCLAMATION))
+                    errdlg.ShowModal()
+                    errdlg.Destroy()
+                    self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
+                    self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+                    return False
+                except:
+                    errdlg = wx.MessageDialog(None,
+                                              'CurrentCost',
+                                              'Failed to connect to CurrentCost meter',
+                                              style=(wx.OK | wx.ICON_EXCLAMATION))
+                    errdlg.ShowModal()
+                    errdlg.Destroy()
+                    self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
+                    self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+                    return False
+    
+                # create a data connection
+                historydataagent.connect(self, ccdb.dbLocation,
+                                         historydataagent.CONNECTION_SERIAL, 
+                                         None, None, # arguments used by CONNECTION_MQTT
+                                         myserialconn)
+                
+                # update the GUI to show what the user has selected
+                self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  True)
+                self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+            else:
+                # update the GUI to show that the user has cancelled
+                self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
+                self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+        dlg.Destroy()
+
+
+
     # connecting via MQTT
     def onDownloadAllMQTT (self, event):
-        global livedataagent, plotter, ccdb
+        global historydataagent, ccdb
 
         if self.IsMQTTSupportAvailable():
             if historydataagent.connectionType == historydataagent.CONNECTION_MQTT:
@@ -942,7 +1037,8 @@ class MyFrame(wx.Frame):
             # create a new connection
             historydataagent.connect(self, ccdb.dbLocation,
                                      historydataagent.CONNECTION_MQTT, 
-                                     ipaddr, topicString)
+                                     ipaddr, topicString,
+                                     None)  # argument used by CONNECTION_SERIAL
             
             # update the GUI to show what the user has selected
             self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)

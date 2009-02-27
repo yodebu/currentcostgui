@@ -42,7 +42,7 @@ from currentcostdata import CurrentCostUpdate
 #  Dale Lane (http://dalelane.co.uk/blog)
 
 
-class CurrentCostMQTTConnection():
+class CurrentCostMQTTHistoryConnection():
 
     subscriber = None
     

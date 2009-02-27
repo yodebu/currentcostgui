@@ -215,12 +215,12 @@ class CurrentCostDataParser:
         #  in different places - so this if...else sequence is a little over-complex
         if 'src' in self.currentcoststruct['msg']:
             if 'sver' in self.currentcoststruct['msg']['src']:
-                # version 2 CurrentCost meters                
+                # version 2  ('classic') CurrentCost meters                
                 if 'hist' in self.currentcoststruct['msg']:
                     self.converter.storeTimedCurrentCostDatav2(today, ccdb, self.currentcoststruct['msg']['hist'])
                     updatesremaining = 0
             elif self.currentcoststruct['msg']['src'].startswith('CC128-v0.'):
-                # CC128 CurrentCost meters
+                # version CC128 ('envi') CurrentCost meters
                 if 'hist' in self.currentcoststruct['msg']:
                     # for now, only looking at data on sensor 0 - the 'whole house' sensor
                     #  to get different sensor data, change the 'if' statement below
