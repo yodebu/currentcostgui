@@ -67,7 +67,7 @@ class CurrentCostHistoryData():
     #
     # called to create a connection to the CurrentCost meter
     # 
-    def connect(self, guihandle, dbFilePath, connType, ipaddr, topic):
+    def connect(self, guihandle, dbFilePath, connType, ipaddr, topic, com):
         # store globals
         self.connectionType = connType
 
@@ -76,21 +76,31 @@ class CurrentCostHistoryData():
             self.topicstring = topic
     
             mqttClientModule = __import__("currentcostmqtthistory")
-            self.mqttClient = mqttClientModule.CurrentCostMQTTConnection()
+            self.mqttClient = mqttClientModule.CurrentCostMQTTHistoryConnection()
     
             backgroundThread = MQTTUpdateThread(self.mqttClient, ipaddr, topic, self)
             backgroundThread.start()
 
+            # MQTT update thread will return results on a different thread
+            #  this means we need to implement a way of capturing these results
+            #  and inserting them into the database
+            # this is not required when using serial connection, which will do
+            #  it's own inserting into the database
             self.dbThread = DatabaseUpdateThread(dbFilePath)
             self.dbThread.start()
             
         elif self.connectionType == self.CONNECTION_SERIAL:
             self.comport = com
 
-            self.comClient = CurrentCostSerialConnection()
+            self.comClient = CurrentCostSerialHistoryConnection()
 
-            backgroundThread = SerialUpdateThread(self.comClient, com, self)
+            backgroundThread = SerialUpdateThread(self.comClient, self.comport, self, dbFilePath)
             backgroundThread.start()
+
+            # we do not need a thread to handle inserts into the database, so 
+            #  we make sure that if there is one, it is stopped now
+            if self.dbThread != None:
+                self.dbThread.shutdown()
         else:
             print 'Unsupported connection type'
 
@@ -159,6 +169,13 @@ class SerialUpdateThread(Thread):
 
 
 # a background thread used to insert data into the database
+#
+# the history data agent needs it's own connection to the database because 
+#  results will come back on a different thread, and pysqlite (used to implement
+#  the database) cannot reuse a connection across multiple threads
+# the connection is relatively low cost, so having two connections open - one 
+#  for the GUI thread and one for a background worker thread - doesn't seem like
+#  a burdensome extravagance :-)
 class DatabaseUpdateThread(Thread):
     dbloc = None
     pendingUpdates = None
@@ -168,11 +185,22 @@ class DatabaseUpdateThread(Thread):
         Thread.__init__(self)
         self.dbloc = dblocation
         self.pendingUpdates = Queue(0)
+
+    # request that the thread insert new data into the database
     def addNewData(self, newupdate):
         self.pendingUpdates.put(newupdate)
+
+    # inform the thread that it should stop
     def shutdown(self):
         self.running = False
+        # the main body of the the thread does a blocking get on the pendingUpdates
+        #  queue. to make sure we break out of that 'get' to check the running flag, 
+        #  we put a null object on the queue
+        # as long as the main body does a null check on what it gets from the 
+        #  queue before using it, this is safe
         self.pendingUpdates.put(None)
+
+    # main body of the thread - inserts data into the database
     def run(self):
         ccfuncs = CurrentCostDataFunctions()
         dbconn = CurrentCostDB()

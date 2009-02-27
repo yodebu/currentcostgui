@@ -37,7 +37,7 @@ import string
 #  Dale Lane (http://dalelane.co.uk/blog)
 
 
-class CurrentCostSerialConnection():
+class CurrentCostSerialLiveConnection():
 
     numberOfErrors = 0
 

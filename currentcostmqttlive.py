@@ -41,7 +41,7 @@ from mqttClient import *
 #  Dale Lane (http://dalelane.co.uk/blog)
 
 
-class CurrentCostMQTTConnection():
+class CurrentCostMQTTLiveConnection():
 
     subscriber = None
     

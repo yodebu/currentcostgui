@@ -25,7 +25,7 @@ import datetime
 from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from threading import Thread, Lock
-from currentcostcomlive import CurrentCostSerialConnection
+from currentcostcomlive import CurrentCostSerialLiveConnection
 from nationalgriddata   import NationalGridDataSource
 
 #
@@ -330,14 +330,14 @@ class CurrentCostLiveData():
             self.topicstring = topic
     
             mqttClientModule = __import__("currentcostmqttlive")
-            self.mqttClient = mqttClientModule.CurrentCostMQTTConnection()
+            self.mqttClient = mqttClientModule.CurrentCostMQTTLiveConnection()
     
             backgroundThread = MQTTUpdateThread(self.mqttClient, ipaddr, topic, self)
             backgroundThread.start()
         elif self.connectionType == self.CONNECTION_SERIAL:
             self.comport = com
 
-            self.comClient = CurrentCostSerialConnection()
+            self.comClient = CurrentCostSerialLiveConnection()
 
             backgroundThread = SerialUpdateThread(self.comClient, com, self)
             backgroundThread.start()
