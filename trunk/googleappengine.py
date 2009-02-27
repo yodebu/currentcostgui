@@ -181,7 +181,7 @@ class GoogleAppEngine():
         progdlg = wx.ProgressDialog ('CurrentCost', 
                                      'Connecting to CurrentCost web service', 
                                      maximum = numitems, 
-                                     style=wx.PD_CAN_ABORT)
+                                     style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
 
         # log on to Google App Engine - creating a cookie to use when we start
         #  downloading data
@@ -289,7 +289,10 @@ class GoogleAppEngine():
         numitems = ccdatabase.CountHourData() + ccdatabase.CountDayData() + ccdatabase.CountMonthData() + 4
         curidx   = 0
 
-        progdlg = wx.ProgressDialog ('CurrentCost', 'Connecting to CurrentCost web service', maximum = numitems, style=wx.PD_CAN_ABORT)
+        progdlg = wx.ProgressDialog ('CurrentCost', 
+                                     'Connecting to CurrentCost web service', 
+                                     maximum = numitems, 
+                                     style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
 
 
         # log on to Google App Engine - creating a cookie to use when we start

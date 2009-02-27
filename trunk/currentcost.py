@@ -357,8 +357,20 @@ class MyFrame(wx.Frame):
     # added this to handle when the application is closed because we need 
     #  to disconnect any open connections first
     def OnClose(self, event):
+        progDlg = wx.ProgressDialog ('CurrentCost', 
+                                     'Shutting down...', 
+                                     maximum = 3, 
+                                     style=wx.PD_AUTO_HIDE)
+
+
+        progDlg.Update(1)
         livedataagent.disconnect()
+
+        progDlg.Update(2)
         historydataagent.disconnect()
+
+        progDlg.Update(3)
+        progDlg.Destroy()
         self.Destroy()
 
 
@@ -540,7 +552,7 @@ class MyFrame(wx.Frame):
         progDlg = wx.ProgressDialog ('CurrentCost', 
                                      'Comparing electricity usage with named friends', 
                                      maximum = 6, 
-                                     style=wx.PD_CAN_ABORT)    
+                                     style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
 
         (tocontinue, toskip) = progDlg.Update(1, 'Preparing visualisations class')
         if tocontinue == False:
@@ -702,7 +714,10 @@ class MyFrame(wx.Frame):
         reuseconnection = myserialconn.isConnected()
 
         if reuseconnection == True:
-            dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to local CurrentCost meter using serial connection', maximum = 11, style=wx.PD_CAN_ABORT)
+            dialog = wx.ProgressDialog ('CurrentCost', 
+                                        'Connecting to local CurrentCost meter using serial connection', 
+                                        maximum = 11, 
+                                        style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
             if getDataFromCurrentCostMeter("", dialog) == True:
                 drawMyGraphs(self, dialog, False)
             dialog.Destroy()
@@ -715,7 +730,10 @@ class MyFrame(wx.Frame):
                 newcom = dlg.GetValue()
                 if lastcom != newcom:
                     ccdb.StoreSetting("comport", newcom)
-                dialog = wx.ProgressDialog ('CurrentCost', 'Connecting to local CurrentCost meter using serial connection', maximum = 11, style=wx.PD_CAN_ABORT)
+                dialog = wx.ProgressDialog ('CurrentCost', 
+                                            'Connecting to local CurrentCost meter using serial connection', 
+                                            maximum = 11, 
+                                            style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
                 if getDataFromCurrentCostMeter(dlg.GetValue(), dialog) == True:
                     drawMyGraphs(self, dialog, False)
                 dialog.Destroy()
@@ -782,7 +800,7 @@ class MyFrame(wx.Frame):
             dialog = wx.ProgressDialog ('CurrentCost', 
                                         'Connecting to message broker to receive published CurrentCost data', 
                                         maximum = maxitems, 
-                                        style=wx.PD_CAN_ABORT)
+                                        style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
 
             if mqttClient.EstablishConnection(self, dialog, maxitems, ipaddr, topicString) == True:
                 dialog.Update(6, "Subscribed to history feed. Waiting for data")
@@ -894,7 +912,7 @@ class MyFrame(wx.Frame):
         dialog = wx.ProgressDialog ('CurrentCost', 
                                     'Refreshing CurrentCost graphs', 
                                     maximum = maxitems, 
-                                    style=wx.PD_CAN_ABORT)
+                                    style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
         dialog.Update(10, "Drawing graphs")
         drawMyGraphs(self, dialog, False)
         dialog.Update(maxitems, "Complete")
@@ -1093,6 +1111,19 @@ class MyFrame(wx.Frame):
             self.stopBackgroundGraphing()
 
         return
+
+
+    def displayHistoryConnectFailure(self, message):
+        self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
+        self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
+        errdlg = wx.MessageDialog(self,
+                                  message,
+                                  'CurrentCost - stay connected',
+                                  style=(wx.OK | wx.ICON_EXCLAMATION))
+        result = errdlg.ShowModal()
+        errdlg.Destroy()
+        self.stopBackgroundGraphing()
+
 
     def startBackgroundGraphing(self):
         # print 'graph me'
@@ -1596,7 +1627,10 @@ class MyFrame(wx.Frame):
         ccdb.StoreSetting("graphunits", graphunits)
 
         # redraw the graphs
-        progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)
+        progdlg = wx.ProgressDialog ('CurrentCost', 
+                                     'Initialising CurrentCost data store', 
+                                     maximum = 11, 
+                                     style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
         drawMyGraphs(self, progdlg, True)
         progdlg.Destroy()
 
@@ -1614,7 +1648,10 @@ class MyFrame(wx.Frame):
             self.f1.Check(self.MENU_SHOWKWH, False)
             self.f1.Check(self.MENU_SHOWGBP, True)
             # redraw the graphs
-            progdlg = wx.ProgressDialog ('CurrentCost', 'Initialising CurrentCost data store', maximum = 11, style=wx.PD_CAN_ABORT)    
+            progdlg = wx.ProgressDialog ('CurrentCost', 
+                                         'Initialising CurrentCost data store', 
+                                         maximum = 11, 
+                                         style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
             drawMyGraphs(self, progdlg, True)
             progdlg.Destroy()
         else:
@@ -2032,7 +2069,7 @@ def connectToDatabase(guihandle):
     progdlg = wx.ProgressDialog ('CurrentCost', 
                                  'Initialising CurrentCost data store', 
                                  maximum = 11, 
-                                 style=wx.PD_CAN_ABORT)    
+                                 style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
     ccdb.InitialiseDB(dbLocation)
 
     if storeLocation:

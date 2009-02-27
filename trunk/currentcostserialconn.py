@@ -119,6 +119,7 @@ class CurrentCostConnection():
                 self.lock.acquire()
                 line = self.connection.readline()
                 line = line.rstrip('\r\n')
+                print line
                 return line
             except serial.SerialException, err:
                 self.disconnect()

@@ -71,6 +71,7 @@ class CurrentCostHistoryData():
     def connect(self, guihandle, dbFilePath, connType, ipaddr, topic, com):
         # store globals
         self.connectionType = connType
+        self.guicallback = guihandle
 
         if self.connectionType == self.CONNECTION_MQTT:
             self.ipaddress = ipaddr
@@ -136,7 +137,7 @@ class CurrentCostHistoryData():
     # 
     def exitOnError(self, errmsg):
         self.disconnect()
-        self.guicallback.displayLiveConnectFailure(errmsg)
+        self.guicallback.displayHistoryConnectFailure(errmsg)
 
 
 
