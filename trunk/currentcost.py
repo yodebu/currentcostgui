@@ -1760,7 +1760,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #        in which case we have finished and need to break out of 
             #        the loop we are in
 
-            if currentcoststruct['msg']['src'].startswith('CC128-v0.'):
+            if type(currentcoststruct['msg']['src']) is str and currentcoststruct['msg']['src'].startswith('CC128-v0.'):
                 # HACK!
                 # this may or may not be true - there is a potential that a 
                 # CC128 meter returned us some data (e.g. broken or partial XML)
