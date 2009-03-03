@@ -13,4 +13,4 @@ See [Features] for a description of features added
 ||0.9.13 || Added support for specifying an annual usage target ||
 ||0.9.12 || Added support for receiving CurrentCost data from a remote meter via MQTT||
 ||0.9.11 || Added support for multiple CurrentCost meters||
-||0.9.10 || Started adding support for annotations||
+||0.9.10 || Added support for annotations||
