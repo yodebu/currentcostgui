@@ -71,6 +71,14 @@ class CurrentCostDB():
 
         self.connection.commit()
 
+    #
+    # disconnect from the database
+    # 
+    # the connection is unusable after calling this
+    # 
+    def CloseDB(self):
+        if self.connection != None:
+            self.connection.close()
 
 
     def StoreAnnotation(self, timestamp, timeoffset, graphname, annotation, value):

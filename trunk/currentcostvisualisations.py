@@ -36,17 +36,29 @@ from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator,
 
 class CurrentCostVisualisations():
 
+    #
+    # different units to be used for graphs
+    # 
+
+    # keys to be stored in database to represent units 
+    # (pysqlite limits these to ascii chars)
+    GRAPHUNIT_KEY_KWH = "kWh"
+    GRAPHUNIT_KEY_GBP = "GBP"
+    GRAPHUNIT_KEY_CO2 = "CO2"
+    # labels to be displayed on graphs
+    # (any unicode characters allowed)
+    GRAPHUNIT_LABEL_KWH = "kWh"
+    GRAPHUNIT_LABEL_GBP = "£"
+    GRAPHUNIT_LABEL_CO2 = "CO2 (kg)"
+
+    # key stored in database. label stored here
+    graphunitslabel = GRAPHUNIT_KEY_KWH
+
 
     #
     # add a note to the graph
     # 
-    def AddNote(self, notetext, clickedaxes, clickeddatetime, dtfraction, clickedkwh, graphunits, lastkwh, clickedaxestype):
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def AddNote(self, notetext, clickedaxes, clickeddatetime, dtfraction, clickedkwh, kwhfactor, clickedaxestype):
 
         wdth = None
         ctr = None
@@ -81,19 +93,12 @@ class CurrentCostVisualisations():
     #
     # draw hourly power usage
     # 
-    def PlotHourlyData(self, axes, hourData, graphunits, lastkwh):
-
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def PlotHourlyData(self, axes, hourData, kwhfactor):
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
-        axes.set_ylabel(graphunits)
+        axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage by hour')
 
         # each data item represents two hours
@@ -126,19 +131,12 @@ class CurrentCostVisualisations():
     #
     # draw daily power usage
     # 
-    def PlotDailyData(self, axes, dayData, graphunits, lastkwh):
-
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def PlotDailyData(self, axes, dayData, kwhfactor):
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
-        axes.set_ylabel(graphunits)
+        axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage by day')
     
         # plot each day data item
@@ -168,19 +166,12 @@ class CurrentCostVisualisations():
     #
     # draw monthly power usage
     # 
-    def PlotMonthlyData(self, axes, monthData, graphunits, lastkwh):
-
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def PlotMonthlyData(self, axes, monthData, kwhfactor):
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
-        axes.set_ylabel(graphunits)
+        axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage by month')
     
         # plot each hour data item
@@ -206,19 +197,12 @@ class CurrentCostVisualisations():
     #
     # plot a graph of an average day
     # 
-    def PlotAverageDay(self, averageDay, axes, trendstxt, graphunits, lastkwh):
-
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def PlotAverageDay(self, averageDay, axes, trendstxt, kwhfactor):
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
-        axes.set_ylabel(graphunits)
+        axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage in an average weekday')
     
         # each data item represents two hours
@@ -257,19 +241,12 @@ class CurrentCostVisualisations():
     #
     # plot a graph of an average week
     # 
-    def PlotAverageWeek(self, averageWeek, axes, trendstxt, graphunits, lastkwh):
-
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = None
-        if graphunits == "kWh":
-            kwhfactor = 1
-        else:
-            kwhfactor = float(lastkwh)
+    def PlotAverageWeek(self, averageWeek, axes, trendstxt, kwhfactor):
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
-        axes.set_ylabel(graphunits)
+        axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage in an average week')
     
         # as well as drawing an average day, we want to write a message on the
@@ -583,12 +560,7 @@ class CurrentCostVisualisations():
     #  we have a method to add this line, and a method to delete it once drawn
     # 
 
-    def DrawTargetLine(self, targetvalue, axes, graphunits, lastkwh):
-        # do we want to plot data in kWh or financial cost?
-        kwhfactor = 1
-        if graphunits != "kWh":
-            kwhfactor = float(lastkwh)
-
+    def DrawTargetLine(self, targetvalue, axes, kwhfactor):
         line = axes.axhline(y=(targetvalue * kwhfactor), color='y', linewidth=2)  
         axes.figure.canvas.draw()
         return line
