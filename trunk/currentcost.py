@@ -178,10 +178,24 @@ ccvis = CurrentCostVisualisations()
 # class to create a serial connection to CurrentCost meters
 myserialconn = CurrentCostConnection()
 
-# temporary - this value will eventually be retrieved from a reputable source
-#  such as AMEE, and based upon the user indicating their electricity provider
-# in the meantime, a reasonable guess is hard-coded in the app here
-kgCO2PerKWh = 0.461
+# temporary - these values will eventually be retrieved from a reputable source
+#  such as AMEE
+# in the meantime, reasonable guesses are hard-coded in the app here
+#  Note: these were obtained from 
+#    http://www.electricityinfo.org/supplierdataall.php?year=latest
+kgCO2PerKWh = None    # all access to this value should be via getKgCO2PerKWh
+CO2_BY_SUPPLIERS = { "British Gas"                : 0.368,
+                     "Ecotricity"                 : 0.267,
+                     "EDF Energy"                 : 0.569,
+                     "Good Energy"                : 0.0,
+                     "Green Energy"               : 0.129,
+                     "npower"                     : 0.543,
+                     "Powergen"                   : 0.377,
+                     "Southern Electric"          : 0.489,  # Southern Electric is a trading name of the Scottish and Southern Energy Group
+                     "Scottish & Southern Energy" : 0.489,
+                     "Scottish Power"             : 0.610,
+                     "Utilita"                    : 0.460,
+                     "Any other UK supplier"      : 0.480 }
 
 
 class MyFrame(wx.Frame):
@@ -1470,26 +1484,73 @@ class MyFrame(wx.Frame):
         if lastkwh:
             dlg.SetValue(lastkwh)
         if dlg.ShowModal() == wx.ID_OK:
-            newkwh = dlg.GetValue()
             test = None
-            try:
-                # check that we have been given a value that can be turned
-                #  into a number
-                test = float(newkwh)
-            except:
-                errdlg = wx.MessageDialog(None,
-                                          'Not a number',
-                                          'CurrentCost', 
-                                          style=(wx.OK | wx.ICON_EXCLAMATION))
-                errdlg.ShowModal()        
-                errdlg.Destroy()
+            while test == None:
+                newkwh = dlg.GetValue()
+                try:
+                    # check that we have been given a value that can be turned
+                    #  into a number
+                    test = float(newkwh)
+                except:
+                    errdlg = wx.MessageDialog(None,
+                                              'Not a number',
+                                              'CurrentCost', 
+                                              style=(wx.OK | wx.ICON_EXCLAMATION))
+                    errdlg.ShowModal()        
+                    errdlg.Destroy()
+                    newkwh = dlg.ShowModal()
                   
-            if test != None:
-                newkwh = test
-                ccdb.StoreSetting("kwhcost", newkwh)
+            newkwh = test
+            ccdb.StoreSetting("kwhcost", newkwh)
 
         dlg.Destroy()
         return newkwh
+
+
+
+    #
+    # prompt the user for a 'electricity supplier' value
+    #  given the name of an electricity supplier, returns the kg of CO2 per kwh
+    # 
+    #  if promptEvenIfStored is false, we return the value stored in settings db
+    #   immediately if we have it.
+    # 
+    #  if promptEvenIfStored is true, or we have no value stored, then we prompt
+    #   the user to give a value
+    # 
+    def getKgCO2PerKWh(self, promptEvenIfStored):
+        global CO2_BY_SUPPLIERS, kgCO2PerKWh
+
+        # retrieve cached value
+        if kgCO2PerKWh and promptEvenIfStored == False:
+            return kgCO2PerKWh
+
+        # retrieve the last-used setting
+        suppliername = ccdb.RetrieveSetting("electricitysupplier")
+        if suppliername and promptEvenIfStored == False:
+            if suppliername not in CO2_BY_SUPPLIERS.keys():
+                suppliername = 'Any other UK supplier'
+                ccdb.StoreSetting("electricitysupplier", suppliername)
+            kgCO2PerKWh = CO2_BY_SUPPLIERS[suppliername]
+            return kgCO2PerKWh
+
+        # get a new setting from the user
+        newsupplier = None
+        dlg = wx.SingleChoiceDialog(self, 
+                                    'Who is your electricity supplier?',
+                                    'CurrentCost',
+                                    CO2_BY_SUPPLIERS.keys(),
+                                    style=(wx.OK | wx.DEFAULT_DIALOG_STYLE))
+        dlg.ShowModal()
+        newsupplier = dlg.GetStringSelection()
+        if newsupplier not in CO2_BY_SUPPLIERS.keys():
+            newsupplier = 'Any other UK supplier'
+        ccdb.StoreSetting("electricitysupplier", newsupplier)        
+        dlg.Destroy()
+
+        # return CO2 value
+        kgCO2PerKWh = CO2_BY_SUPPLIERS[newsupplier]
+        return kgCO2PerKWh
 
 
     #
@@ -1586,7 +1647,7 @@ class MyFrame(wx.Frame):
 
 
     def displayUsageTarget(self):
-        global ccdb, ccvis, targetlines, kgCO2PerKWh
+        global ccdb, ccvis, targetlines
     
         annualtarget = ccdb.RetrieveSetting("annualtarget")
         annualtargetfloat = float(annualtarget)
@@ -1601,7 +1662,7 @@ class MyFrame(wx.Frame):
         if graphUnit == ccvis.GRAPHUNIT_KEY_GBP:
             kwhfactor = float(kwhcost)
         elif graphUnit == ccvis.GRAPHUNIT_KEY_CO2:
-            kwhfactor = float(kgCO2PerKWh)
+            kwhfactor = float(self.getKgCO2PerKWh(False))
 
         # recap:
         # annualtargetfloat - £ to spend in a year
@@ -1701,6 +1762,9 @@ class MyFrame(wx.Frame):
         # store the setting
         ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_CO2
         ccdb.StoreSetting("graphunits", ccvis.GRAPHUNIT_KEY_CO2)
+
+        # force user to re-select electricity supplier
+        self.getKgCO2PerKWh(True)
 
         # redraw the graphs
         progdlg = wx.ProgressDialog ('CurrentCost', 
@@ -1842,7 +1906,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 # redraw graphs on each of the tabs
 # 
 def drawMyGraphs(guihandle, dialog, changeaxesonly):
-    global ccdb, ccvis, kgCO2PerKWh
+    global ccdb, ccvis
 
     # what unit are we using to plot?
     #  we internally store everything in kWh, so if we want to display it in 
@@ -1853,7 +1917,7 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     if graphUnit == ccvis.GRAPHUNIT_KEY_GBP:
         kwhfactor = float(ccdb.RetrieveSetting("kwhcost"))
     elif graphUnit == ccvis.GRAPHUNIT_KEY_CO2:
-        kwhfactor = float(kgCO2PerKWh)
+        kwhfactor = float(guihandle.getKgCO2PerKWh(False))
 
     hourDataCollection = ccdb.GetHourDataCollection()
     dayDataCollection = ccdb.GetDayDataCollection()
@@ -2151,8 +2215,7 @@ def connectToDatabase(guihandle):
         enableTarget = True
     guihandle.f1.Check(guihandle.MENU_TARGET, enableTarget)
 
-    # retrieve preference for whether data should be shown 
-    #  in kWH or £
+    # retrieve preference for whether data should be shown in kWH, kg CO2 or £
     enableGraphUnit = ccdb.RetrieveSetting("graphunits")
     if enableGraphUnit != None:
         # we only need to do something if '£' or 'CO2' was persisted, otherwise
@@ -2225,10 +2288,11 @@ def onMouseClick(event):
         if ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_KWH:
             clickedkwh = clickedbar.get_height()
         elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_CO2:
-            global kgCO2PerKWh
+            # request electricity supplier
+            kgCO2PerKWh = self.getKgCO2PerKWh(False)
             clickedkwh = clickedbar.get_height() / kgCO2PerKWh
         else: # elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_GBP 
-            kwhcost = float(ccdb.RetrieveSetting("kwhcost"))
+            kwhcost = self.getKWHCost(False)
             clickedkwh = clickedbar.get_height() / kwhcost
     
         clickedaxes = clickedbar.get_axes()
