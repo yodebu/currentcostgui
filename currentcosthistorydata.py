@@ -222,3 +222,5 @@ class DatabaseUpdateThread(Thread):
                 #  of the while loop
                 ccfuncs.ParseCurrentCostXML(dbconn, nextupdate)
 
+        # cleanup
+        dbconn.CloseDB()

@@ -172,11 +172,17 @@ livedataagent = CurrentCostLiveData()
 # class to maintain history graphs
 historydataagent = CurrentCostHistoryData()
 
-# stores the unit to be used in graphs
-graphunits = "kWh"
+# class to generate graphs
+ccvis = CurrentCostVisualisations()
 
 # class to create a serial connection to CurrentCost meters
 myserialconn = CurrentCostConnection()
+
+# temporary - this value will eventually be retrieved from a reputable source
+#  such as AMEE, and based upon the user indicating their electricity provider
+# in the meantime, a reasonable guess is hard-coded in the app here
+kgCO2PerKWh = 0.461
+
 
 class MyFrame(wx.Frame):
     MENU_HISTORY     = None
@@ -185,6 +191,7 @@ class MyFrame(wx.Frame):
     mnuTarget        = None
     MENU_SHOWKWH     = None
     MENU_SHOWGBP     = None
+    MENU_SHOWCO2     = None
     MENU_TARGET      = None
     MENU_LIVE_COM    = None
     MENU_LIVE_MQTT   = None
@@ -247,6 +254,7 @@ class MyFrame(wx.Frame):
         MENU_LOADDB             = wx.NewId()
         self.MENU_SHOWKWH       = wx.NewId()
         self.MENU_SHOWGBP       = wx.NewId()
+        self.MENU_SHOWCO2       = wx.NewId()
         self.MENU_TARGET        = wx.NewId()
         MENU_EXPORT1            = wx.NewId()
         MENU_EXPORT2            = wx.NewId()
@@ -285,8 +293,10 @@ class MyFrame(wx.Frame):
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
         self.f1.Append(self.MENU_SHOWGBP, "Display GBP", "Show GBP on CurrentCost graphs", kind=wx.ITEM_CHECK)
+        self.f1.Append(self.MENU_SHOWCO2, "Display CO2", "Show CO2 on CurrentCost graphs", kind=wx.ITEM_CHECK)
         self.f1.Check(self.MENU_SHOWKWH, True)
         self.f1.Check(self.MENU_SHOWGBP, False)
+        self.f1.Check(self.MENU_SHOWCO2, False)
         self.f1.AppendSeparator()
         self.mnuTarget = self.f1.Append(self.MENU_TARGET,  "Set personal target", "Set a usage target", kind=wx.ITEM_CHECK)
         self.f1.Check(self.MENU_TARGET, False)
@@ -351,6 +361,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onShowWebsite,        id=MENU_BUGREPT)
         self.Bind(wx.EVT_MENU, self.onShowKWH,            id=self.MENU_SHOWKWH)
         self.Bind(wx.EVT_MENU, self.onShowGBP,            id=self.MENU_SHOWGBP)
+        self.Bind(wx.EVT_MENU, self.onShowCO2,            id=self.MENU_SHOWCO2)
         self.Bind(wx.EVT_MENU, self.onSetUsageTarget,     id=self.MENU_TARGET)
         self.Bind(wx.EVT_MENU, self.getDataFromXML,       id=MENU_MANUAL)
         self.Bind(wx.EVT_MENU, self.openMatplotlibUrl,    id=MENU_MATPLOT)
@@ -364,19 +375,23 @@ class MyFrame(wx.Frame):
     # added this to handle when the application is closed because we need 
     #  to disconnect any open connections first
     def OnClose(self, event):
+        global ccdb
+
         progDlg = wx.ProgressDialog ('CurrentCost', 
                                      'Shutting down...', 
-                                     maximum = 3, 
+                                     maximum = 4, 
                                      style=wx.PD_AUTO_HIDE)
 
-
         progDlg.Update(1)
-        livedataagent.disconnect()
+        ccdb.CloseDB()
 
         progDlg.Update(2)
-        historydataagent.disconnect()
+        livedataagent.disconnect()
 
         progDlg.Update(3)
+        historydataagent.disconnect()
+
+        progDlg.Update(4)
         progDlg.Destroy()
         self.Destroy()
 
@@ -405,9 +420,10 @@ class MyFrame(wx.Frame):
 
     # helper function to update the status bar
     def UpdateStatusBar(self, event):
+        global ccvis
         if event.inaxes:
             x, y = event.xdata, event.ydata
-            statustext = "%.2f " + graphunits
+            statustext = "%.2f " + ccvis.graphunitslabel
             self.statusBar.SetStatusText((statustext % y), 0)
 
 
@@ -481,12 +497,10 @@ class MyFrame(wx.Frame):
         self.downloadData(gae)
 
     def downloadData(self, gae):
-        global plotter, ccdb
+        global plotter, ccdb, ccvis
 
         hourDataCollection = ccdb.GetHourDataCollection()
         dayDataCollection = ccdb.GetDayDataCollection()
-
-        ccvis = CurrentCostVisualisations()
 
         ccdata = CurrentCostDataFunctions()
         averageDayData = ccdata.CalculateAverageDay(hourDataCollection)
@@ -540,7 +554,7 @@ class MyFrame(wx.Frame):
 
     def onCompareUsers(self, event):
 
-        global ccdb
+        global ccdb, ccvis
 
         userEntryDialog = wx.TextEntryDialog(self, 
                                              'Enter up to four usernames of friends to compare\n (one username per line):',
@@ -566,8 +580,6 @@ class MyFrame(wx.Frame):
             progDlg.Update(6, "Cancelled")
             progDlg.Destroy()
             return
-
-        ccvis = CurrentCostVisualisations()
 
         progDlg.Update(2, 'Preparing Google communications class')
         gae = GoogleAppEngine()
@@ -1133,7 +1145,6 @@ class MyFrame(wx.Frame):
 
 
     def startBackgroundGraphing(self):
-        # print 'graph me'
         dlg = wx.MessageDialog(self,
                                "Data will continue to be downloaded from the "
                                "CurrentCost meter in the background.\n\n"
@@ -1507,8 +1518,8 @@ class MyFrame(wx.Frame):
         self.f1.Check(self.MENU_TARGET, enableTarget)
 
     def disableUsageTarget(self):
-        global targetlines
-        ccvis = CurrentCostVisualisations()
+        global targetlines, ccvis
+
         try:
             ccvis.DeleteTargetLine(targetlines[self.axes1], self.axes1)
         except:
@@ -1575,11 +1586,22 @@ class MyFrame(wx.Frame):
 
 
     def displayUsageTarget(self):
-        global ccdb, graphunits
+        global ccdb, ccvis, targetlines, kgCO2PerKWh
     
         annualtarget = ccdb.RetrieveSetting("annualtarget")
         annualtargetfloat = float(annualtarget)
         kwhcost = self.getKWHCost(False)
+
+        # what unit are we using to plot?
+        #  we internally store everything in kWh, so if we want to display it in 
+        #   another unit, we need to know what to multiply the kWh by to get the 
+        #   value for displaying
+        kwhfactor = 1
+        graphUnit = ccdb.RetrieveSetting("graphunits")
+        if graphUnit == ccvis.GRAPHUNIT_KEY_GBP:
+            kwhfactor = float(kwhcost)
+        elif graphUnit == ccvis.GRAPHUNIT_KEY_CO2:
+            kwhfactor = float(kgCO2PerKWh)
 
         # recap:
         # annualtargetfloat - £ to spend in a year
@@ -1590,31 +1612,28 @@ class MyFrame(wx.Frame):
         dailykwh   = annualkwh / 365
         hourlykwh  = annualkwh / 4380
 
-        global targetlines
-        ccvis = CurrentCostVisualisations()
-
         try:
-            targetlines[self.axes1] = ccvis.DrawTargetLine(hourlykwh, self.axes1, graphunits, kwhcost)
+            targetlines[self.axes1] = ccvis.DrawTargetLine(hourlykwh, self.axes1, kwhfactor)
         except:
             # noop
             i = 0
         try:
-            targetlines[self.axes2] = ccvis.DrawTargetLine(dailykwh, self.axes2, graphunits, kwhcost)
+            targetlines[self.axes2] = ccvis.DrawTargetLine(dailykwh, self.axes2, kwhfactor)
         except:
             # noop
             i = 0
         try:
-            targetlines[self.axes3] = ccvis.DrawTargetLine(monthlykwh, self.axes3, graphunits, kwhcost)
+            targetlines[self.axes3] = ccvis.DrawTargetLine(monthlykwh, self.axes3, kwhfactor)
         except:
             # noop
             i = 0    
         try:
-            targetlines[self.axes4] = ccvis.DrawTargetLine(hourlykwh, self.axes4, graphunits, kwhcost)
+            targetlines[self.axes4] = ccvis.DrawTargetLine(hourlykwh, self.axes4, kwhfactor)
         except:
             # noop
             i = 0    
         try:
-            targetlines[self.axes5] = ccvis.DrawTargetLine(dailykwh, self.axes5, graphunits, kwhcost)
+            targetlines[self.axes5] = ccvis.DrawTargetLine(dailykwh, self.axes5, kwhfactor)
         except:
             # noop
             i = 0    
@@ -1623,15 +1642,16 @@ class MyFrame(wx.Frame):
     # redraw the graphs to use kWh as a unit in the graph
     #
     def onShowKWH (self, event):
-        global ccdb, graphunits
+        global ccdb, ccvis
 
         # update the GUI to show what the user has selected
         self.f1.Check(self.MENU_SHOWKWH, True)
         self.f1.Check(self.MENU_SHOWGBP, False)
+        self.f1.Check(self.MENU_SHOWCO2, False)
 
         # store the setting
-        graphunits = "kWh"
-        ccdb.StoreSetting("graphunits", graphunits)
+        ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_KWH
+        ccdb.StoreSetting("graphunits", ccvis.GRAPHUNIT_KEY_KWH)
 
         # redraw the graphs
         progdlg = wx.ProgressDialog ('CurrentCost', 
@@ -1645,15 +1665,16 @@ class MyFrame(wx.Frame):
     # redraw the graphs to use financial cost as the units in the graph
     # 
     def onShowGBP (self, event):
-        global ccdb, graphunits
+        global ccdb, ccvis
         #
         if self.getKWHCost(True):
             # store the setting
-            graphunits = "£"
-            ccdb.StoreSetting("graphunits", "GBP")  # we can't store '£' in pysqlite
+            ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_GBP
+            ccdb.StoreSetting("graphunits", ccvis.GRAPHUNIT_KEY_GBP)  
             # update the GUI
             self.f1.Check(self.MENU_SHOWKWH, False)
             self.f1.Check(self.MENU_SHOWGBP, True)
+            self.f1.Check(self.MENU_SHOWCO2, False)
             # redraw the graphs
             progdlg = wx.ProgressDialog ('CurrentCost', 
                                          'Initialising CurrentCost data store', 
@@ -1664,8 +1685,35 @@ class MyFrame(wx.Frame):
         else:
             self.f1.Check(self.MENU_SHOWKWH, True)
             self.f1.Check(self.MENU_SHOWGBP, False)
+            self.f1.Check(self.MENU_SHOWCO2, False)
+
+    #
+    # redraw the graphs to use CO2 as a unit in the graph
+    #
+    def onShowCO2 (self, event):
+        global ccdb, ccvis
+
+        # update the GUI to show what the user has selected
+        self.f1.Check(self.MENU_SHOWKWH, False)
+        self.f1.Check(self.MENU_SHOWGBP, False)
+        self.f1.Check(self.MENU_SHOWCO2, True)
+
+        # store the setting
+        ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_CO2
+        ccdb.StoreSetting("graphunits", ccvis.GRAPHUNIT_KEY_CO2)
+
+        # redraw the graphs
+        progdlg = wx.ProgressDialog ('CurrentCost', 
+                                     'Initialising CurrentCost data store', 
+                                     maximum = 11, 
+                                     style=wx.PD_CAN_ABORT | wx.PD_AUTO_HIDE)
+        drawMyGraphs(self, progdlg, True)
+        progdlg.Destroy()
 
 
+#
+# GLOBAL FUNCTIONS
+# 
 
 def getDataFromCurrentCostMeter(portdet, dialog):
     global ccdb, myparser, myserialconn
@@ -1794,9 +1842,18 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 # redraw graphs on each of the tabs
 # 
 def drawMyGraphs(guihandle, dialog, changeaxesonly):
-    global ccdb, graphunits
+    global ccdb, ccvis, kgCO2PerKWh
 
-    lastkwh = ccdb.RetrieveSetting("kwhcost")
+    # what unit are we using to plot?
+    #  we internally store everything in kWh, so if we want to display it in 
+    #   another unit, we need to know what to multiply the kWh by to get the 
+    #   value for displaying
+    kwhfactor = 1
+    graphUnit = ccdb.RetrieveSetting("graphunits")
+    if graphUnit == ccvis.GRAPHUNIT_KEY_GBP:
+        kwhfactor = float(ccdb.RetrieveSetting("kwhcost"))
+    elif graphUnit == ccvis.GRAPHUNIT_KEY_CO2:
+        kwhfactor = float(kgCO2PerKWh)
 
     hourDataCollection = ccdb.GetHourDataCollection()
     dayDataCollection = ccdb.GetDayDataCollection()
@@ -1807,42 +1864,40 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
             dialog.Update(11, 'Data store initialised')
         return
 
-    ccvis = CurrentCostVisualisations()
-
     if dialog != None:
         dialog.Update(3, 'Charting hourly electricity usage...')
-    ccvis.PlotHourlyData(guihandle.axes1, hourDataCollection, graphunits, lastkwh)
+    ccvis.PlotHourlyData(guihandle.axes1, hourDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(1):
         ccvis.AddNote(storednote[0], # storednote[4], 
                       guihandle.axes1, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
-                      graphunits, lastkwh,
+                      kwhfactor,
                       "hours")        
 
     if dialog != None:
         dialog.Update(4, 'Charting daily electricity usage...')
-    ccvis.PlotDailyData(guihandle.axes2, dayDataCollection, graphunits, lastkwh)
+    ccvis.PlotDailyData(guihandle.axes2, dayDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(2):
         ccvis.AddNote(storednote[0], # storednote[4], 
                       guihandle.axes2, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
-                      graphunits, lastkwh,
+                      kwhfactor,
                       "days")        
 
     if dialog != None:
         dialog.Update(5, 'Charting monthly electricity usage...')
-    ccvis.PlotMonthlyData(guihandle.axes3, monthDataCollection, graphunits, lastkwh)
+    ccvis.PlotMonthlyData(guihandle.axes3, monthDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(3):        
         ccvis.AddNote(storednote[0], # storednote[4], 
                       guihandle.axes3, 
                       storednote[1], 
                       storednote[2], 
                       storednote[5], 
-                      graphunits, lastkwh,
+                      kwhfactor,
                       "months")        
 
     ccdata = CurrentCostDataFunctions()
@@ -1857,12 +1912,12 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     if dialog != None:
         dialog.Update(7, 'Charting an average day...')
     if averageDayData:
-        ccvis.PlotAverageDay(averageDayData, guihandle.axes4, guihandle.trendspg, graphunits, lastkwh)
+        ccvis.PlotAverageDay(averageDayData, guihandle.axes4, guihandle.trendspg, kwhfactor)
 
     if dialog != None:    
         dialog.Update(8, 'Charting an average week...')
     if averageWeekData:
-        ccvis.PlotAverageWeek(averageWeekData, guihandle.axes5, guihandle.trendspg, graphunits, lastkwh)
+        ccvis.PlotAverageWeek(averageWeekData, guihandle.axes5, guihandle.trendspg, kwhfactor)
 
     if dialog != None:
         dialog.Update(9, 'Formatting charts...')
@@ -1939,7 +1994,7 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
 #   historical CurrentCost usage data, and settings and preferences
 # 
 def connectToDatabase(guihandle):
-    global ccdb
+    global ccdb, ccvis
 
     # what is the path to the database used to store CurrentCost data?
     dbLocation = ""
@@ -2100,15 +2155,20 @@ def connectToDatabase(guihandle):
     #  in kWH or £
     enableGraphUnit = ccdb.RetrieveSetting("graphunits")
     if enableGraphUnit != None:
-        # we only need to do something if '£' was persisted, otherwise
+        # we only need to do something if '£' or 'CO2' was persisted, otherwise
         #  just leave the default KWH setting
-        if enableGraphUnit == "GBP":
-            global graphunits
-            graphunits = "£"
+        if enableGraphUnit == ccvis.GRAPHUNIT_KEY_GBP:
+            ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_GBP
             # update the GUI
             guihandle.f1.Check(guihandle.MENU_SHOWKWH, False)
             guihandle.f1.Check(guihandle.MENU_SHOWGBP, True)
-
+            guihandle.f1.Check(guihandle.MENU_SHOWCO2, False)
+        elif enableGraphUnit == ccvis.GRAPHUNIT_KEY_CO2:
+            ccvis.graphunitslabel = ccvis.GRAPHUNIT_LABEL_CO2
+            # update the GUI
+            guihandle.f1.Check(guihandle.MENU_SHOWKWH, False)
+            guihandle.f1.Check(guihandle.MENU_SHOWGBP, False)
+            guihandle.f1.Check(guihandle.MENU_SHOWCO2, True)
 
     # draw the graphs
 
@@ -2125,7 +2185,7 @@ def connectToDatabase(guihandle):
 # if the user click's on the note itself, the details of that note will be 
 #  displayed. (unfinished)
 def onMouseClick(event):
-    global ccdb, graphunits, frame
+    global ccdb, frame, ccvis
 
     if isinstance(event.artist, Text):
         text = event.artist
@@ -2162,9 +2222,12 @@ def onMouseClick(event):
         clickedgraph = None
         kwhcost = 1
     
-        if graphunits == "kWh":
+        if ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_KWH:
             clickedkwh = clickedbar.get_height()
-        else:
+        elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_CO2:
+            global kgCO2PerKWh
+            clickedkwh = clickedbar.get_height() / kgCO2PerKWh
+        else: # elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_GBP 
             kwhcost = float(ccdb.RetrieveSetting("kwhcost"))
             clickedkwh = clickedbar.get_height() / kwhcost
     
@@ -2182,8 +2245,7 @@ def onMouseClick(event):
 
             rowid = ccdb.StoreAnnotation(clickeddatetime, fraction, clickedgraph, newnote, clickedkwh)
 
-            ccvis = CurrentCostVisualisations()
-            ccvis.AddNote(rowid, clickedaxes, clickeddatetime, fraction, clickedkwh, graphunits, clickedkwh, clickedgraph)        
+            ccvis.AddNote(rowid, clickedaxes, clickeddatetime, fraction, clickedkwh, clickedkwh, clickedgraph)        
         dlg.Destroy()
 
 

@@ -84,6 +84,10 @@ class CurrentCostSerialHistoryConnection():
                     guihandle.exitOnError('Error reading from COM port: ' + str(exception))
                     return
 
+
+        # cleanup
+        dbconnection.CloseDB()
+
         try:
             self.ser.disconnect()
         except:
