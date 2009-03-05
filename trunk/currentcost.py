@@ -428,7 +428,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.20"
+        info.Version = "0.9.21"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -478,7 +478,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.20":
+        elif latestversion != "0.9.21":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -2289,11 +2289,11 @@ def onMouseClick(event):
             clickedkwh = clickedbar.get_height()
         elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_CO2:
             # request electricity supplier
-            kgCO2PerKWh = self.getKgCO2PerKWh(False)
-            clickedkwh = clickedbar.get_height() / kgCO2PerKWh
+            kgCO2PerKWh = frame.getKgCO2PerKWh(False)
+            clickedkwh = clickedbar.get_height() / float(kgCO2PerKWh)
         else: # elif ccvis.graphunitslabel == ccvis.GRAPHUNIT_LABEL_GBP 
-            kwhcost = self.getKWHCost(False)
-            clickedkwh = clickedbar.get_height() / kwhcost
+            kwhcost = frame.getKWHCost(False)
+            clickedkwh = clickedbar.get_height() / float(kwhcost)
     
         clickedaxes = clickedbar.get_axes()
         if clickedaxes == frame.axes1:
