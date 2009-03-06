@@ -2315,11 +2315,9 @@ def onMouseClick(event):
 
 
 def demo():
-    global frame
+    global frame, plotter
     app = wx.App()
     frame = MyFrame(None,-1,'CurrentCost')
-    #
-    global plotter
     #
     plotter = PlotNotebook(frame)
     # 
@@ -2349,5 +2347,6 @@ def demo():
 
 
 
-if __name__ == "__main__": demo()
+if __name__ == "__main__": 
+    demo()
 
