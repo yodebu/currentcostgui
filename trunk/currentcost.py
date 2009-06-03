@@ -319,8 +319,8 @@ class MyFrame(wx.Frame):
         f2.Append(MENU_EXPORT1, "Export hours to CSV...", "Export stored two-hourly CurrentCost data to a CSV spreadsheet file")
         f2.Append(MENU_EXPORT2, "Export days to CSV...", "Export stored daily CurrentCost data to a CSV spreadsheet file")
         f2.Append(MENU_EXPORT3, "Export months to CSV...", "Export stored monthly CurrentCost data to a CSV spreadsheet file")
-        #f2.AppendSeparator()
-        #f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
+        f2.AppendSeparator()
+        f2.Append(MENU_MANUAL,  "Import XML", "Manually import XML CurrentCost data")
 
         f3 = wx.Menu()
         #f3.Append(MENU_UPLOAD,  "Upload data to web...", "Upload CurrentCost data to the web")
@@ -428,7 +428,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.21"
+        info.Version = "0.9.22"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -478,7 +478,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.21":
+        elif latestversion != "0.9.22":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
