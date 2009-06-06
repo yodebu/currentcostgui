@@ -59,8 +59,9 @@ class CurrentCostSerialLiveConnection():
                 line = self.ser.readUpdate()
 
                 try:
-                    ccreading = self.parseLiveXML(line)                
-                    guihandle.updateGraph(ccreading)
+                    ccreading = self.parseLiveXML(line)
+                    if ccreading >= 0:
+                        guihandle.updateGraph(ccreading)
                 except:            
                     # Exiting on a single garbled string from the 
                     #  serial port is a bit extreme - it isn't unusual 
@@ -100,12 +101,14 @@ class CurrentCostSerialLiveConnection():
 
         idx = line.find('<ch1><watts>')
         if idx <= 0:
-            raise Exception('Unable to find an opening ch1 tag')
+            # raise Exception('Unable to find an opening ch1 tag')
+            return -1
         idx += START_TAG_LENGTH
 
         endidx = line.find('</watts></ch1>', idx)
         if endidx <= 0:
-            raise Exception('Unable to find a closing ch1 tag')
+            # raise Exception('Unable to find a closing ch1 tag')
+            return -1
 
         substr = line[idx : endidx]
 
@@ -113,12 +116,12 @@ class CurrentCostSerialLiveConnection():
 
         idx = line.find('<ch2><watts>', endidx)
         if idx <= 0:
-            raise Exception('Unable to find an opening ch2 tag')
+            return ccreading
         idx += START_TAG_LENGTH
 
         endidx = line.find('</watts></ch2>', idx)
         if endidx <= 0:
-            raise Exception('Unable to find a closing ch2 tag')
+            return ccreading
 
         substr = line[idx : endidx]
 
@@ -126,12 +129,12 @@ class CurrentCostSerialLiveConnection():
 
         idx = line.find('<ch3><watts>', endidx)
         if idx <= 0:
-            raise Exception('Unable to find an opening ch3 tag')
+            return ccreading
         idx += START_TAG_LENGTH
 
         endidx = line.find('</watts></ch3>', idx)
         if endidx <= 0:
-            raise Exception('Unable to find a closing ch3 tag')
+            return ccreading
 
         substr = line[idx : endidx]
 
