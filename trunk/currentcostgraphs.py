@@ -24,7 +24,7 @@ import wx.aui
 import matplotlib as mpl
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as Canvas
-from matplotlib.backends.backend_wx import NavigationToolbar2Wx 
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx, _load_bitmap
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
 from matplotlib.patches import Rectangle, Patch
 from matplotlib.text import Text
@@ -33,6 +33,8 @@ from matplotlib.text import Text
 #
 # Implements the tabs we use in the GUI - either to draw a graph, or a TextPage 
 #  for the 'trends' page.
+# 
+# Also includes a custom toolbar for use with Matplotlib graphs
 #
 #  Dale Lane (http://dalelane.co.uk/blog)
 
@@ -85,19 +87,51 @@ class PlotNotebook(wx.Panel):
 # we override the matplotlib toolbar class to remove the subplots function, 
 #  which we do not use
 # 
-class Toolbar(NavigationToolbar2Wx):    
+class Toolbar(NavigationToolbar2Wx): 
+
+    ON_CUSTOM_LEFT  = wx.NewId()
+    ON_CUSTOM_RIGHT = wx.NewId()
+
     # rather than copy and edit the whole (rather large) init function, we run
     # the super-classes init function as usual, then go back and delete the 
     # button we don't want
     def __init__(self, plotCanvas):
         CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION = 6
         NavigationToolbar2Wx.__init__(self, plotCanvas)        
+        # delete the toolbar button we don't want
         self.DeleteToolByPos(CONFIGURE_SUBPLOTS_TOOLBAR_BTN_POSITION) 
-    # in theory this should never get called, but in case it does (e.g. if there
+        # add the new toolbar buttons that we do want
+        self.AddSimpleTool(self.ON_CUSTOM_LEFT, _load_bitmap('stock_left.xpm'),
+                           'Pan to the left', 'Pan graph to the left')
+        wx.EVT_TOOL(self, self.ON_CUSTOM_LEFT, self._on_custom_pan_left)
+        self.AddSimpleTool(self.ON_CUSTOM_RIGHT, _load_bitmap('stock_right.xpm'),
+                           'Pan to the right', 'Pan graph to the right')
+        wx.EVT_TOOL(self, self.ON_CUSTOM_RIGHT, self._on_custom_pan_right)
+
+    # in theory this should never get called, because we delete the toolbar 
+    #  button that calls it. but in case it does get called (e.g. if there
     # is a keyboard shortcut I don't know about) then we override the method 
     # that gets called - to protect against the exceptions that it throws
     def configure_subplot(self, evt):
         print 'ERROR: This application does not support subplots'
+
+    # pan the graph to the left
+    def _on_custom_pan_left(self, evt):
+        ONE_SCREEN = 7   # we default to 1 week
+        axes = self.canvas.figure.axes[0]
+        x1,x2 = axes.get_xlim()
+        ONE_SCREEN = x2 - x1
+        axes.set_xlim(x1 - ONE_SCREEN, x2 - ONE_SCREEN)
+        self.canvas.draw()
+
+    # pan the graph to the right
+    def _on_custom_pan_right(self, evt):
+        ONE_SCREEN = 7   # we default to 1 week
+        axes = self.canvas.figure.axes[0]
+        x1,x2 = axes.get_xlim()
+        ONE_SCREEN = x2 - x1
+        axes.set_xlim(x1 + ONE_SCREEN, x2 + ONE_SCREEN)
+        self.canvas.draw()
 
 
 #
