@@ -20,6 +20,7 @@
 #    Any contact about this application is warmly welcomed.
 #
 import wx
+import csv
 import datetime
 
 from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter
@@ -97,6 +98,23 @@ class CurrentCostLiveData():
     # there can be two threads updating the graph. to avoid them both doing it 
     #  at once, we need a thread lock
     lock = Lock()
+
+
+
+    def ExportLiveData(self, filepath):
+        f = open(filepath, 'wt')
+        fieldnames = ('Time', 'kWH')
+        writer = csv.DictWriter(f, fieldnames=fieldnames, dialect='excel')
+        headers = {}
+        for n in fieldnames:
+            headers[n] = n
+        writer.writerow(headers)
+
+        for i in range(0, len(self.ccdates) - 1):
+            writer.writerow( { 'Time': self.ccdates[i],
+                               'kWH' : self.ccreadings[i] } )
+
+        f.close()        
 
 
     #

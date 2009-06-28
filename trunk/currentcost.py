@@ -249,6 +249,8 @@ class MyFrame(wx.Frame):
         #           +---  Connect via serial port                  MENU_LIVE_COM
         #           +---  Connect via MQTT                        MENU_LIVE_MQTT
         #           |
+        #           +---  Export live data                      MENU_LIVE_EXPORT
+        #           |
         #           +---  Show live demand                      MENU_LIVE_DEMAND
         #           +---  Show supply vs demand                 MENU_LIVE_SUPPLY
         # 
@@ -284,6 +286,7 @@ class MyFrame(wx.Frame):
         MENU_MANUAL             = wx.NewId()
         MENU_MATPLOT            = wx.NewId()
         MENU_HELPDOC            = wx.NewId()
+        MENU_LIVE_EXPORT        = wx.NewId()
 
         menuBar = wx.MenuBar()
 
@@ -300,6 +303,8 @@ class MyFrame(wx.Frame):
         self.MENU_LIVE = wx.Menu()        
         self.MENU_LIVE.Append(self.MENU_LIVE_COM,  "Connect via serial port", "Connect to a CurrentCost meter and display live CurrentCost updates", kind=wx.ITEM_CHECK)
         self.MENU_LIVE.Append(self.MENU_LIVE_MQTT, "Connect via MQTT",        "Receive live CurrentCost updates from an MQTT-compatible message broker", kind=wx.ITEM_CHECK)
+        self.MENU_LIVE.AppendSeparator()
+        self.MENU_LIVE.Append(MENU_LIVE_EXPORT, "Export live data to CSV...", "Export live CurrentCost data from this session to a CSV spreadsheet file")
         self.MENU_LIVE.AppendSeparator()
         self.MENU_LIVE.Append(self.MENU_LIVE_DEMAND, "National electricity demand",    "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
         self.MENU_LIVE.Append(self.MENU_LIVE_SUPPLY, "National Grid supply vs demand", "Show live data from the National Grid website from the grid frequency", kind=wx.ITEM_CHECK)
@@ -365,6 +370,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onExportHours,        id=MENU_EXPORT1)
         self.Bind(wx.EVT_MENU, self.onExportDays,         id=MENU_EXPORT2)
         self.Bind(wx.EVT_MENU, self.onExportMonths,       id=MENU_EXPORT3)
+        self.Bind(wx.EVT_MENU, self.onExportLive,         id=MENU_LIVE_EXPORT)
         self.Bind(wx.EVT_MENU, self.onUploadData,         id=MENU_UPLOAD)
         self.Bind(wx.EVT_MENU, self.onDownloadData,       id=MENU_DNLOAD)
         self.Bind(wx.EVT_MENU, self.onSyncData,           id=MENU_SYNC)
@@ -428,7 +434,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.23"
+        info.Version = "0.9.24"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -478,7 +484,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.23":
+        elif latestversion != "0.9.24":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -730,6 +736,13 @@ class MyFrame(wx.Frame):
         if dialog.ShowModal() == wx.ID_OK:
             ccdatafn = CurrentCostDataFunctions()
             ccdatafn.ExportDateData(dialog.GetPath(), monthDataCollection)
+            self.SetStatusText("CurrentCost data exported to " + dialog.GetPath())
+        dialog.Destroy()
+
+    def onExportLive(self, event):
+        dialog = wx.FileDialog( None, style = wx.SAVE, wildcard="Comma-separated values files (*.csv)|*.csv")
+        if dialog.ShowModal() == wx.ID_OK:
+            livedataagent.ExportLiveData(dialog.GetPath())
             self.SetStatusText("CurrentCost data exported to " + dialog.GetPath())
         dialog.Destroy()
 
