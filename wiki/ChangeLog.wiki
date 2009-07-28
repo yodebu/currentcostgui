@@ -2,6 +2,7 @@
 
 See [Features] for a description of features added
 
+||0.9.24 || Added support for exporting live data to CSV ||
 ||0.9.23 || Added buttons to toolbars to pan the graphs ||
 ||0.9.22 || Added support for live graphs measuring multi-phase meters ||
 ||0.9.21 || Added support for kg of CO2 as a unit for electricity usage graphs ||
