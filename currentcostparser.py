@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # CurrentCost parsing
 #
@@ -29,6 +31,11 @@ from currentcostdb          import CurrentCostDB
 # this class converts relative timestamps into absolute timestamps
 from currentcostdataconvert import CurrentCostDataConverter
 
+# this class provides logging and diagnostics
+from tracer                 import CurrentCostTracer
+
+
+trc = CurrentCostTracer()
 
 #
 # CurrentCost XML parser written to handle CC128 data
@@ -151,34 +158,52 @@ class CurrentCostDataParser:
     #   handle to the internal CurrentCost data structure
     # 
     def parseCurrentCostXML(self, xmldata):
+        global trc
+        trc.FunctionEntry("parseCurrentCostXML")
+
         # reset the internal store
+        trc.Trace("resetting parser stores")
         self.currentcoststruct = {}
         self.currentpointer = []
 
         # sanity check before running parser
         if xmldata.startswith('<msg>') == False:
+            trc.Trace("sanity test - XML missing opening <msg> tag - aborting")
+            trc.FunctionExit("parseCurrentCostXML")
             return None
         if xmldata.endswith('</msg>') == False:
+            trc.Trace("sanity test - XML missing closing </msg> tag - aborting")
+            trc.FunctionExit("parseCurrentCostXML")
             return None
 
         try:
+            trc.Trace("creating parser")
             p = xml.parsers.expat.ParserCreate()
-            p.StartElementHandler = self.start_element
-            p.EndElementHandler = self.end_element
+            p.StartElementHandler  = self.start_element
+            p.EndElementHandler    = self.end_element
             p.CharacterDataHandler = self.char_data
             p.Parse(xmldata, 1)
+            trc.Trace("parsed CurrentCost XML")
+            trc.FunctionExit("parseCurrentCostXML")
             return self.currentcoststruct
-        except xml.parsers.expat.ExpatError:
+        except xml.parsers.expat.ExpatError, err:
             #print("Received incomplete or invalid data from CurrentCost meter.")            
             # reset the internal stores
+            trc.Trace("XML parsing error")
+            trc.Trace("ExpatError : " + str(err))
+            trc.Trace("resetting parser stores (again)")
             self.currentcoststruct = {}
             self.currentpointer = []
         except Exception, msg:
             #print 'Unknown error: ' + str(msg)
             # reset the internal stores
+            trc.Trace("unknown error during XML parsing")
+            trc.Trace("Exception : " + str(msg))
+            trc.Trace("resetting parser stores (again)")
             self.currentcoststruct = {}
             self.currentpointer = []
 
+        trc.FunctionExit("parseCurrentCostXML")
         return None
 
 
@@ -204,29 +229,44 @@ class CurrentCostDataParser:
     #   None
     # 
     def storeTimedCurrentCostData(self, ccdb):
+        global trc
+        trc.FunctionEntry("storeTimedCurrentCostData")
+
         # prepare a reference timestamp
         today = datetime.datetime.now()
 
         # the newer CC128 meter splits the history data over multiple updates
         # we use this number to indicate how many updates are remaining
+        trc.Trace("initialising 'updatesremaining' to '?'")
         updatesremaining = '?'
 
         # different versions of the CurrentCost meter stored the version number
         #  in different places - so this if...else sequence is a little over-complex
+        trc.Trace("self.currentcoststruct['msg'] == " + str(self.currentcoststruct['msg']))
         if 'src' in self.currentcoststruct['msg']:
+            trc.Trace("found 'src' in self.currentcoststruct['msg']")
+            trc.Trace("self.currentcoststruct['msg']['src'] == " + str(self.currentcoststruct['msg']['src']))
             if 'sver' in self.currentcoststruct['msg']['src']:
-                # version 2  ('classic') CurrentCost meters                
+                # version 2  ('classic') CurrentCost meters
+                trc.Trace("found 'sver' in self.currentcoststruct['msg']['src']")
                 if 'hist' in self.currentcoststruct['msg']:
+                    trc.Trace("found 'hist' in self.currentcoststruct['msg']")
                     self.converter.storeTimedCurrentCostDatav2(today, ccdb, self.currentcoststruct['msg']['hist'])
                     updatesremaining = 0
-            elif self.currentcoststruct['msg']['src'].startswith('CC128-v0.'):
+            elif self.currentcoststruct['msg']['src'].startswith('CC128-v0.'):                
                 # version CC128 ('envi') CurrentCost meters
+                trc.Trace("CC128 version : " + str(self.currentcoststruct['msg']['src']))
                 if 'hist' in self.currentcoststruct['msg']:
                     # for now, only looking at data on sensor 0 - the 'whole house' sensor
                     #  to get different sensor data, change the 'if' statement below
+                    trc.Trace("found 'hist' in self.currentcoststruct['msg']")
                     for dataobj in self.currentcoststruct['msg']['hist']:
+                        trc.Trace("next data object in self.currentcoststruct['msg']['hist']:")
+                        trc.Trace(str(dataobj))
                         if dataobj.startswith('data'):
+                            trc.Trace("found data in history")
                             if self.currentcoststruct['msg']['hist'][dataobj]['sensor'] == '0':
+                                trc.Trace("data for sensor 0")
                                 self.converter.storeTimedCurrentCostDatavcc128(today, ccdb, self.currentcoststruct['msg']['hist'][dataobj])                            
                                 keys = (self.currentcoststruct['msg']['hist'][dataobj]).keys()
                                 keys.sort()
@@ -235,10 +275,12 @@ class CurrentCostDataParser:
                                     # we assume that we wont receive a mixture of key types in one 
                                     #  update (e.g. hours mixed with months)
                                     if keynumchk == 'h':
+                                        trc.Trace("received history data containing hourly history data")
                                         keynumstr = key[1:len(key)]
                                         updatesremaining = int(keynumstr) / 2
                                         break
                                     elif keynumchk == 'd':
+                                        trc.Trace("received history data containing daily history data")
                                         # the meter can return between 0 and 2 updates with daily data
                                         # and between 0 and 2 updates with monthly data
                                         # so at this point (where we have received an update with days
@@ -246,10 +288,11 @@ class CurrentCostDataParser:
                                         updatesremaining = 3
                                         break
                                     elif keynumchk == 'm':
+                                        trc.Trace("received history data containing monthly history data")
                                         # the meter can return between 0 and 2 updates with monthly data
                                         # so at this point (where we have received an update with months
                                         # in it) we assume that there can be at most 1 update remaining
                                         updatesremaining = 1
                                         break
-
+        trc.FunctionExit("storeTimedCurrentCostData")
         return updatesremaining

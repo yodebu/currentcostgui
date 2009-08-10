@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # CurrentCost GUI
 # 
@@ -20,6 +22,8 @@
 #    Any contact about this application is warmly welcomed.
 #
 
+from tracer import CurrentCostTracer 
+
 import serial
 import threading       # this class needs to be thread-safe
 
@@ -28,12 +32,18 @@ import threading       # this class needs to be thread-safe
 # 
 #  Dale Lane (http://dalelane.co.uk/blog)
 # 
-class CurrentCostConnection():
+
+# class for logging diagnostics
+trc = CurrentCostTracer()
+
+
+class CurrentCostConnection:
 
     connection = None
     connerr = None
 
     lock = threading.Lock()
+
 
     #
     # connect to the specified COM port (or serial device for Linux etc.)
@@ -45,14 +55,18 @@ class CurrentCostConnection():
     #    (e.g. for Windows, this will be something like 'COM9' and on Linux, it
     #      will be something like '/dev/ttyUSB')
     def connect(self, portdet):
+        global trc
+        trc.FunctionEntry("currentcostserialconn :: connect")
 
         # check if already connected - reuse existing connection if possible
         if self.connection != None:
+            trc.Trace("already connected - will reuse existing connection")
             return True
 
         # the 'classic' meters are still the most common, so we try that first
         try:
             # connect to the CurrentCost meter
+            trc.Trace("creating serial connection definition using port " + portdet + " and timeout of 5 seconds")
             self.connection = serial.Serial(port=portdet, timeout=5)
 
             # if we are here, we connected successfully
@@ -62,25 +76,35 @@ class CurrentCostConnection():
             # 
             # we assume that a decent connection should output at least one 
             #  '<' in any 20 bytes of data received
+            trc.Trace("connection apparently successful - sanity testing by reading 20 bytes from the meter:")
             testdata = self.connection.read(20)
+            trc.Trace(str(testdata))
             xmlsearch = testdata.find('<')
             if xmlsearch != -1:
+                trc.Trace("think we connected successfully")
+                trc.FunctionExit("currentcostserialconn :: connect")
                 return True
             else:
+                trc.Trace("think the connection isn't working - so we close this first attempt")
                 self.connection.close()
         except serial.SerialException, msg:
             # we won't report a failure yet - as we haven't attempted a CC128
             # connection yet
+            trc.Trace("SerialException - failed to connect")
+            trc.Trace(str(msg))
             self.connerr = msg
         except:
             # we won't report a failure yet - as we haven't attempted a CC128
             # connection yet
+            trc.Trace("Exception - failed to connect")
+            trc.Trace(str(msg))
             self.connerr = msg
 
         # if we are here, we failed to connect using the 'classic' meter settings
         # so we attempt a connection using CC128 settings now
         try:
             # connect to the CurrentCost meter
+            trc.Trace("retrying connection using CC128 baud rate using port " + portdet + " and timeout of 3 seconds")
             self.connection = serial.Serial(port=portdet,
                                             baudrate=57600,
                                             bytesize=serial.EIGHTBITS,
@@ -91,10 +115,16 @@ class CurrentCostConnection():
             return True
         except serial.SerialException, msg:
             # we won't report a failure yet 
+            trc.Trace("SerialException - failed to connect")
+            trc.Trace(str(msg))
             self.connerr = msg
         except:
             # we won't report a failure yet 
+            trc.Trace("Exception - failed to connect")
+            trc.Trace(str(msg))
             self.connerr = msg
+
+        trc.FunctionExit("currentcostserialconn :: connect")
 
         # if we are here, we failed to connect on both attempts
         raise self.connerr
@@ -102,9 +132,13 @@ class CurrentCostConnection():
     #
     # closes any active serial connection
     def disconnect(self):
+        global trc
+        trc.FunctionEntry("currentcostserialconn :: disconnect")
         if self.connection != None:
+            trc.Trace("closing connection")
             self.connection.close()
             self.connection = None
+        trc.FunctionExit("currentcostserialconn :: disconnect")
 
     #
     # reads a line of XML from any active serial connection
@@ -113,24 +147,39 @@ class CurrentCostConnection():
     #   important for synchronisation to be maintained
     # 
     def readUpdate(self):
-
+        global trc
+        trc.FunctionEntry("currentcostserialconn :: readUpdate")
         if self.connection != None:
             try:
+                trc.Trace("aquiring sync lock")
                 self.lock.acquire()
                 line = self.connection.readline()
                 line = line.rstrip('\r\n')
+                trc.Trace("read a line from currentcost meter:")
+                trc.Trace(line)
+                trc.FunctionExit("currentcostserialconn :: readUpdate")
                 return line
             except serial.SerialException, err:
+                trc.Error("encountered error while trying to read from CurrentCost meter")
+                trc.Error("SerialException " + str(err))
                 self.disconnect()
+                trc.FunctionExit("currentcostserialconn :: readUpdate")
                 raise err
             except Exception, msg:
+                trc.Error("encountered error while trying to read from CurrentCost meter")
+                trc.Error("Exception " + str(err))
                 self.disconnect()
+                trc.FunctionExit("currentcostserialconn :: readUpdate")
                 raise msg
             finally:
+                trc.Trace("releasing sync lock")
                 self.lock.release()
+        trc.FunctionExit("currentcostserialconn :: readUpdate")
 
     #
     # test for connection
     # 
     def isConnected(self):
+        global trc
+        trc.Trace("currentcostserialconn :: isConnected - returning " + str((self.connection != None)))
         return (self.connection != None)

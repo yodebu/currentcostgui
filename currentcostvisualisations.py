@@ -22,9 +22,12 @@
 #    Any contact about this application is warmly welcomed.
 #
 import datetime
+from tracer import CurrentCostTracer 
+
 
 from dateutil.relativedelta import relativedelta
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, date2num, drange
+
 
 
 #
@@ -34,7 +37,11 @@ from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator,
 #   Dale Lane (http://dalelane.co.uk/blog)
 # 
 
-class CurrentCostVisualisations():
+# class for logging diagnostics
+trc = CurrentCostTracer()
+
+
+class CurrentCostVisualisations:
 
     #
     # different units to be used for graphs
@@ -94,6 +101,8 @@ class CurrentCostVisualisations():
     # draw hourly power usage
     # 
     def PlotHourlyData(self, axes, hourData, kwhfactor):
+        global trc
+        trc.FunctionEntry("PlotHourlyData")
 
         # initialise graph canvas
         axes.cla()
@@ -105,6 +114,8 @@ class CurrentCostVisualisations():
         #  two hours is (2 / 24) of a day - which is why we want each bar
         #  to be (2/24) wide
         barwidth = 0.083333333333333333333333333333333
+
+        trc.Trace("found " + str(len(hourData)) + " hour data items")
 
         # plot each hour data item
         for k, v in hourData.iteritems():
@@ -127,18 +138,24 @@ class CurrentCostVisualisations():
         maxdate = today + endoftoday
         axes.set_xlim(xmin=mindate, xmax=maxdate)
 
-    
+        trc.FunctionExit("PlotHourlyData")
+
+
     #
     # draw daily power usage
     # 
     def PlotDailyData(self, axes, dayData, kwhfactor):
+        global trc
+        trc.FunctionEntry("PlotDailyData")
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
         axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage by day')
-    
+
+        trc.Trace("found " + str(len(dayData)) + " day data items")
+
         # plot each day data item
         for k, v in dayData.iteritems():
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
@@ -162,18 +179,23 @@ class CurrentCostVisualisations():
         mindate = today - aweek
         axes.set_xlim(xmin=mindate, xmax=today)
 
+        trc.FunctionExit("PlotDailyData")
 
     #
     # draw monthly power usage
     # 
     def PlotMonthlyData(self, axes, monthData, kwhfactor):
+        global trc
+        trc.FunctionEntry("PlotMonthlyData")
 
         # initialise graph canvas
         axes.cla()
         axes.grid(True)
         axes.set_ylabel(self.graphunitslabel)
         axes.set_title('Power usage by month')
-    
+
+        trc.Trace("found " + str(len(monthData)) + " month data items")
+
         # plot each hour data item
         for k, v in monthData.iteritems():
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
@@ -192,12 +214,14 @@ class CurrentCostVisualisations():
             label.set_picker(True)
             label.set_rotation(90)
 
-
+        trc.FunctionExit("PlotMonthlyData")
 
     #
     # plot a graph of an average day
     # 
     def PlotAverageDay(self, averageDay, axes, trendstxt, kwhfactor):
+        global trc
+        trc.FunctionEntry("PlotAverageDay")
 
         # initialise graph canvas
         axes.cla()
@@ -216,7 +240,7 @@ class CurrentCostVisualisations():
         # so while drawing the graph, we store the highest value
         highesthour = -1
         highesthourval = -1
-    
+
         # plot each hour data item
         for avtime in averageDay:
             avval = averageDay[avtime]
@@ -236,12 +260,15 @@ class CurrentCostVisualisations():
                 endtimehr = 1   
             trendstxt.UpdateTrendText(5, 
                                       "You typically use the most electricity between " + ("%d" % highesthour) + ":00 and " + ("%d" % endtimehr) + ":00")
-    
+
+        trc.FunctionExit("PlotAverageDay")
 
     #
     # plot a graph of an average week
     # 
     def PlotAverageWeek(self, averageWeek, axes, trendstxt, kwhfactor):
+        global trc
+        trc.FunctionEntry("PlotAverageWeek")
 
         # initialise graph canvas
         axes.cla()
@@ -273,9 +300,9 @@ class CurrentCostVisualisations():
             daytodisplay = datetime.date(2008, 9, highestday + 1)
             trendstxt.UpdateTrendText(6, "You typically use the most electricity on " + daytodisplay.strftime("%A") + "s")
         except:
-            print highestday
+            trc.Error(str(highestday))
 
-
+        trc.FunctionExit("PlotAverageWeek")
 
     #
     # plot the user's usage compared with the average usage of the group that 
