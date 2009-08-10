@@ -24,6 +24,8 @@
 
 import os
 import sys
+import getopt
+import logging
 import urllib
 import urllib2
 import cookielib
@@ -51,6 +53,7 @@ from currentcostlivedata       import CurrentCostLiveData
 from currentcosthistorydata    import CurrentCostHistoryData
 from currentcostparser         import CurrentCostDataParser
 from currentcostserialconn     import CurrentCostConnection
+from tracer                    import CurrentCostTracer
 
 from matplotlib.dates import DayLocator, HourLocator, MonthLocator, YearLocator, WeekdayLocator, DateFormatter, drange
 from matplotlib.patches import Rectangle, Patch
@@ -132,10 +135,10 @@ from matplotlib.text import Text
 #                                     all updates in background 
 #   nationalgriddata.py          - downloads live national electricity usage 
 #                                     data from the National Grid realtime feed
+#   tracer.py                    - very simple tracing functionality
 # 
 # 
 ############################################################################
-
 
 
 
@@ -159,6 +162,9 @@ targetlines = {}
 
 # the interface that we add tabs to
 plotter = None
+
+# class for logging diagnostic info
+trc = CurrentCostTracer()
 
 # connection to the database used to store CurrentCost data
 ccdb   = CurrentCostDB()
@@ -198,11 +204,13 @@ CO2_BY_SUPPLIERS = { "British Gas"                : 0.368,
                      "Any other UK supplier"      : 0.480 }
 
 
+
 class MyFrame(wx.Frame):
     MENU_HISTORY     = None
     MENU_HIST_S      = None
     f1               = None
     mnuTarget        = None
+    mnuTrace         = None
     MENU_SHOWKWH     = None
     MENU_SHOWGBP     = None
     MENU_SHOWCO2     = None
@@ -213,6 +221,7 @@ class MyFrame(wx.Frame):
     MENU_HIST_S_MQTT = None
     MENU_LIVE_DEMAND = None
     MENU_LIVE_SUPPLY = None
+    
 
     #
     # these are the different graphs that we draw on
@@ -225,7 +234,7 @@ class MyFrame(wx.Frame):
     liveaxes = None    # live data
 
     def Build_Menus(self):
-        global ccdb
+        global ccdb, trc
 
         #
         # menu structure
@@ -285,6 +294,7 @@ class MyFrame(wx.Frame):
         MENU_BUGREPT            = wx.NewId()
         MENU_MANUAL             = wx.NewId()
         MENU_MATPLOT            = wx.NewId()
+        MENU_TRACE              = wx.NewId()
         MENU_HELPDOC            = wx.NewId()
         MENU_LIVE_EXPORT        = wx.NewId()
 
@@ -345,7 +355,9 @@ class MyFrame(wx.Frame):
         f4.AppendSeparator()
         f4.Append(MENU_MATPLOT, "What do the toolbar buttons do?", "See documentation on the pan and zoom controls")
         f4.Append(MENU_HELPDOC, "General help", "See general documentation about the app")
-
+        f4.AppendSeparator()
+        self.mnuTrace = f4.Append(MENU_TRACE, "Collect diagnostics", "Enable tracing for the developer", kind=wx.ITEM_CHECK)
+        self.mnuTrace.Check(check=trc.IsTraceEnabled())
 
         self.MENU_HISTORY.AppendMenu(-1, "Download once",  self.MENU_HIST_1)
         self.MENU_HISTORY.AppendMenu(-1, "Stay connected", self.MENU_HIST_S)
@@ -388,8 +400,10 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.openHelpUrl,          id=MENU_HELPDOC)
         self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=self.MENU_LIVE_DEMAND)
         self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=self.MENU_LIVE_SUPPLY)
+        self.Bind(wx.EVT_MENU, self.onToggleTrace,        id=MENU_TRACE)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
+
 
 
     # added this to handle when the application is closed because we need 
@@ -434,7 +448,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.24"
+        info.Version = "0.9.25"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -446,7 +460,13 @@ class MyFrame(wx.Frame):
             statustext = "%.2f " + ccvis.graphunitslabel
             self.statusBar.SetStatusText((statustext % y), 0)
 
-
+    # 
+    def onToggleTrace(self, event):
+        global trc
+        trc.FunctionEntry("onToggleTrace")
+        trc.EnableTrace(self.mnuTrace.IsChecked())
+        if self.mnuTrace.IsChecked() == True:
+            trc.InitialiseTraceFile()
 
     #################
     # 
@@ -484,7 +504,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.24":
+        elif latestversion != "0.9.25":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -754,12 +774,15 @@ class MyFrame(wx.Frame):
     #   data
     # 
     def onDownloadOnceSerial (self, event):
-        global ccdb, livedataagent, myserialconn
+        global ccdb, livedataagent, myserialconn, trc
+
+        trc.FunctionEntry("onDownloadOnceSerial")
 
         # if already connected, we do not need to connect now
         reuseconnection = myserialconn.isConnected()
 
         if reuseconnection == True:
+            trc.Trace("reusing existing serial connection")
             dialog = wx.ProgressDialog ('CurrentCost', 
                                         'Connecting to local CurrentCost meter using serial connection', 
                                         maximum = 11, 
@@ -768,13 +791,16 @@ class MyFrame(wx.Frame):
                 drawMyGraphs(self, dialog, False)
             dialog.Destroy()
         else:
+            trc.Trace("creating a new serial connection")
             dlg = wx.TextEntryDialog(self, 'Specify the COM port to connect to:','CurrentCost')
             lastcom = ccdb.RetrieveSetting("comport")
             if lastcom:
+                trc.Trace("last used serial port: " + lastcom)
                 dlg.SetValue(lastcom)
             if dlg.ShowModal() == wx.ID_OK:
                 newcom = dlg.GetValue()
                 if lastcom != newcom:
+                    trc.Trace("user entered new serial port setting: " + newcom)
                     ccdb.StoreSetting("comport", newcom)
                 dialog = wx.ProgressDialog ('CurrentCost', 
                                             'Connecting to local CurrentCost meter using serial connection', 
@@ -785,6 +811,7 @@ class MyFrame(wx.Frame):
                 dialog.Destroy()
             dlg.Destroy()
 
+        trc.FunctionExit("onDownloadOnceSerial")
 
     #
     # connect to a CurrentCost meter via MQTT
@@ -918,7 +945,8 @@ class MyFrame(wx.Frame):
     # manually enter XML for parsing - for test use only
     
     def getDataFromXML(self, event):
-        global myparser, ccdb
+        global myparser, ccdb, trc
+        trc.FunctionEntry("getDataFromXML")
         # 
         line = ""
         dlg = wx.TextEntryDialog(self, 'Enter the XML:', 'CurrentCost')
@@ -926,18 +954,24 @@ class MyFrame(wx.Frame):
             line = dlg.GetValue()
         dlg.Destroy()
 
+        trc.Trace("xml entered by user")
+        trc.Trace(line)
+
         # try to parse the XML
         currentcoststruct = myparser.parseCurrentCostXML(line)
 
         if currentcoststruct == None:
             # something wrong with the line of xml we received
-            print ('Received invalid data')
+            trc.Error('Received invalid data')
+            trc.FunctionExit("getDataFromXML")
             return False
         else:
+            trc.Trace("storing parsed data")
             # store the CurrentCost data in the datastore
             myparser.storeTimedCurrentCostData(ccdb)
 
         # 
+        trc.FunctionExit("getDataFromXML")
         return True
 
 
@@ -954,6 +988,8 @@ class MyFrame(wx.Frame):
     # 
     # so we make the user do it
     def onRedrawGraphs(self, event):
+        global trc
+        trc.FunctionEntry("onRedrawGraphs")
         maxitems = 11
         dialog = wx.ProgressDialog ('CurrentCost', 
                                     'Refreshing CurrentCost graphs', 
@@ -963,22 +999,27 @@ class MyFrame(wx.Frame):
         drawMyGraphs(self, dialog, False)
         dialog.Update(maxitems, "Complete")
         dialog.Destroy()
+        trc.FunctionExit("onRedrawGraphs")
 
 
     # connecting directly 
     def onDownloadAllSerial (self, event):
-        global historydataagent, ccdb, myserialconn
+        global historydataagent, ccdb, myserialconn, trc
+        trc.FunctionEntry("onDownloadAllSerial")
 
         if historydataagent.connectionType == historydataagent.CONNECTION_SERIAL:
+            trc.Trace("Active history data agent using serial connection")
             # disconnect
             historydataagent.disconnect()
             # update the GUI to show what the user has selected
             self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
             self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
             self.stopBackgroundGraphing()
+            trc.FunctionExit("onDownloadAllSerial")
             return
 
         if historydataagent.connectionType == historydataagent.CONNECTION_MQTT:
+            trc.Trace("Active history data agent using MQTT connection")
             # disconnect any existing connection
             historydataagent.disconnect()
 
@@ -987,6 +1028,7 @@ class MyFrame(wx.Frame):
         reuseconnection = myserialconn.isConnected()
 
         if reuseconnection == True:
+            trc.Trace("reusing an existing serial connection")
             # create a data connection
             historydataagent.connect(self, ccdb.dbLocation,
                                      historydataagent.CONNECTION_SERIAL, 
@@ -998,6 +1040,7 @@ class MyFrame(wx.Frame):
             self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
             self.startBackgroundGraphing()
         else:
+            trc.Trace("creating a new serial connection")
             # serial port not already connected, so we need to connect now
             #
             # get information from the user required to establish the connection
@@ -1007,8 +1050,10 @@ class MyFrame(wx.Frame):
             lastcom = ccdb.RetrieveSetting("comport")
             if lastcom:
                 dlg.SetValue(lastcom)
+                trc.Trace("last used COM port: " + lastcom)
             if dlg.ShowModal() == wx.ID_OK:
                 newcom = dlg.GetValue()
+                trc.Trace("user entered COM port value: " + newcom)
                 if lastcom != newcom:
                     ccdb.StoreSetting("comport", newcom)
     
@@ -1023,8 +1068,11 @@ class MyFrame(wx.Frame):
                     # catch and handle these ourselves
                     # (the only exception to this is that it will close the connection
                     #  in the event of an error, so we do not need to do this explicitly)
+                    trc.Trace("connecting to serial port")
                     myserialconn.connect(newcom)
                 except serial.SerialException, msg:
+                    trc.Error("Failed to connect to CurrentCost meter")
+                    trc.Error("SerialException: " + str(msg))
                     errdlg = wx.MessageDialog(None,
                                               'Serial Exception: ' + str(msg),
                                               'Failed to connect to CurrentCost meter',
@@ -1034,8 +1082,10 @@ class MyFrame(wx.Frame):
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
                     self.stopBackgroundGraphing()
+                    trc.FunctionExit("onDownloadAllSerial")
                     return False
                 except:
+                    trc.Error("Failed to connect to CurrentCost meter")
                     errdlg = wx.MessageDialog(None,
                                               'CurrentCost',
                                               'Failed to connect to CurrentCost meter',
@@ -1045,6 +1095,7 @@ class MyFrame(wx.Frame):
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
                     self.stopBackgroundGraphing()
+                    trc.FunctionExit("onDownloadAllSerial")
                     return False
     
                 # create a data connection
@@ -1064,6 +1115,7 @@ class MyFrame(wx.Frame):
                 self.stopBackgroundGraphing()
             dlg.Destroy()
 
+        trc.FunctionExit("onDownloadAllSerial")
 
 
     # connecting via MQTT
@@ -1793,7 +1845,8 @@ class MyFrame(wx.Frame):
 # 
 
 def getDataFromCurrentCostMeter(portdet, dialog):
-    global ccdb, myparser, myserialconn
+    global ccdb, myparser, myserialconn, trc
+    trc.FunctionEntry("getDataFromCurrentCostMeter")
     # 
     dialog.Update(0, 'Connecting to local CurrentCost meter - using device "' + portdet + '"')
 
@@ -1816,6 +1869,9 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #  in the event of an error, so we do not need to do this explicitly)
             myserialconn.connect(portdet)
         except serial.SerialException, msg:
+            trc.Error("Failed to receive data from CurrentCost meter")
+            trc.Error("SerialException: " + str(msg))
+
             dialog.Update(11, 'Failed to connect to CurrentCost meter')
             errdlg = wx.MessageDialog(None,
                                       'Serial Exception: ' + str(msg),
@@ -1823,9 +1879,12 @@ def getDataFromCurrentCostMeter(portdet, dialog):
                                       style=(wx.OK | wx.ICON_EXCLAMATION))
             errdlg.ShowModal()        
             errdlg.Destroy()
+            trc.FunctionExit("getDataFromCurrentCostMeter")
             return False
         except:
             dialog.Update(11, 'Failed to connect to CurrentCost meter')
+            trc.Error("Failed to connect to CurrentCost meter - unknown cause")
+            trc.FunctionExit("getDataFromCurrentCostMeter")
             return False
 
     # we keep trying to get an update from the CurrentCost meter
@@ -1838,9 +1897,11 @@ def getDataFromCurrentCostMeter(portdet, dialog):
         (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost (' + str(updatesremaining) + ' update(s) remaining)')
         if tocontinue == False:
             if reuseconnection == False:
+                trc.Trace("User cancelled. Closing connection to CurrentCost meter")
                 dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
                 myserialconn.disconnect()
             dialog.Update(11, 'Cancelled.')
+            trc.FunctionExit("getDataFromCurrentCostMeter")
             return False
 
         # line of data received from serial port
@@ -1850,6 +1911,8 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             try:
                 line = myserialconn.readUpdate()
             except serial.SerialException, err:
+                trc.Error("Failed to receive data from CurrentCost meter")
+                trc.Error("SerialException: " + str(msg))
                 dialog.Update(11, 'Failed to receive data from CurrentCost meter')
                 errdlg = wx.MessageDialog(None,
                                           'Serial Exception: ' + str(err),
@@ -1857,8 +1920,11 @@ def getDataFromCurrentCostMeter(portdet, dialog):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()        
                 errdlg.Destroy()
+                trc.FunctionExit("getDataFromCurrentCostMeter")
                 return False
             except Exception, msg:
+                trc.Error("Failed to receive data from CurrentCost meter")
+                trc.Error("Exception: " + str(msg))
                 dialog.Update(11, 'Failed to receive data from CurrentCost meter')
                 errdlg = wx.MessageDialog(None,
                                           'Exception: ' + str(msg),
@@ -1866,8 +1932,10 @@ def getDataFromCurrentCostMeter(portdet, dialog):
                                           style=(wx.OK | wx.ICON_EXCLAMATION))
                 errdlg.ShowModal()        
                 errdlg.Destroy()
+                trc.FunctionExit("getDataFromCurrentCostMeter")
                 return False
 
+        trc.Trace("received line of XML from CurrentCost meter. about to parse")
 
         # try to parse the XML
         currentcoststruct = myparser.parseCurrentCostXML(line)
@@ -1875,6 +1943,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
         if currentcoststruct == None:
             # something wrong with the line of xml we received
             dialog.Update(1, 'Received invalid data from CurrentCost meter. Waiting for a new reading')
+            trc.Trace('Received invalid data from CurrentCost meter. Waiting for a new reading')
         elif 'hist' not in currentcoststruct['msg']:
             # we received something which looked like valid CurrentCost data,
             #  but did not contain any history data
@@ -1884,6 +1953,7 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #        history updates, and has gone back to outputting live data
             #        in which case we have finished and need to break out of 
             #        the loop we are in
+            trc.Trace("received (valid?) CurrentCost data without any history data")
 
             if type(currentcoststruct['msg']['src']) is str and currentcoststruct['msg']['src'].startswith('CC128-v0.'):
                 # HACK!
@@ -1897,21 +1967,25 @@ def getDataFromCurrentCostMeter(portdet, dialog):
                 # for now, we just assume that when the meter stops outputting 
                 # history, then it has finished correctly
                 # probably something to come back to at a future date!
+                trc.Trace("data received from CC128. assuming that there is no history data remaining")
                 updatesremaining = 0
             else:
                 dialog.Update(1, 'Waiting for history data from CurrentCost meter')
+                trc.Trace("waiting for history data")
         else:
             # we have received history data - parse and store the CurrentCost 
             #  data in the datastore
             # the parser will return the number of updates still expected 
             #  (0 if this was the last or only expected update)
             updatesremaining = myparser.storeTimedCurrentCostData(ccdb)
+            trc.Trace("stored history data. think there are now " + str(updatesremaining) + " updates remaining")
 
     dialog.Update(2, 'Received complete history data from CurrentCost meter')
     #
-    if reuseconnection == False:    
+    if reuseconnection == False:
         myserialconn.disconnect()    
     #
+    trc.FunctionExit("getDataFromCurrentCostMeter")
     return True
 
 
@@ -1919,7 +1993,8 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 # redraw graphs on each of the tabs
 # 
 def drawMyGraphs(guihandle, dialog, changeaxesonly):
-    global ccdb, ccvis
+    global ccdb, ccvis, trc
+    trc.FunctionEntry("drawMyGraphs")
 
     # what unit are we using to plot?
     #  we internally store everything in kWh, so if we want to display it in 
@@ -1937,12 +2012,15 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     monthDataCollection = ccdb.GetMonthDataCollection()
 
     if len(hourDataCollection) == 0:
+        trc.Trace("Empty hour data collection")
         if dialog != None:
             dialog.Update(11, 'Data store initialised')
+        trc.FunctionExit("drawMyGraphs")
         return
 
     if dialog != None:
         dialog.Update(3, 'Charting hourly electricity usage...')
+        trc.Trace("charting hourly electricity usage")
     ccvis.PlotHourlyData(guihandle.axes1, hourDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(1):
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -1955,6 +2033,7 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
 
     if dialog != None:
         dialog.Update(4, 'Charting daily electricity usage...')
+        trc.Trace("charting daily electricity usage")
     ccvis.PlotDailyData(guihandle.axes2, dayDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(2):
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -1967,6 +2046,7 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
 
     if dialog != None:
         dialog.Update(5, 'Charting monthly electricity usage...')
+        trc.Trace("charting monthly electricity usage")
     ccvis.PlotMonthlyData(guihandle.axes3, monthDataCollection, kwhfactor)
     for storednote in ccdb.RetrieveAnnotations(3):        
         ccvis.AddNote(storednote[0], # storednote[4], 
@@ -1984,15 +2064,18 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     if changeaxesonly == False:
         if dialog != None:
             dialog.Update(6, 'Identifying electricity usage trends...')
+            trc.Trace("identifying usage trends")
         ccvis.IdentifyTrends(guihandle.trendspg, hourDataCollection, dayDataCollection, monthDataCollection)
 
     if dialog != None:
         dialog.Update(7, 'Charting an average day...')
+        trc.Trace("charting average day")
     if averageDayData:
         ccvis.PlotAverageDay(averageDayData, guihandle.axes4, guihandle.trendspg, kwhfactor)
 
     if dialog != None:    
         dialog.Update(8, 'Charting an average week...')
+        trc.Trace("charting average week")
     if averageWeekData:
         ccvis.PlotAverageWeek(averageWeekData, guihandle.axes5, guihandle.trendspg, kwhfactor)
 
@@ -2039,22 +2122,27 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     try:
         guihandle.axes1.figure.canvas.draw()
     except:
+        trc.Trace("failed to draw canvas on hourly page")
         plotter.deletepage('hourly')
     try:
         guihandle.axes2.figure.canvas.draw()
     except:
+        trc.Trace("failed to draw canvas on daily page")
         plotter.deletepage('daily')
     try:
         guihandle.axes3.figure.canvas.draw() # error?
     except:
+        trc.Trace("failed to draw canvas on monthly page")
         plotter.deletepage('monthly')
     try:
         guihandle.axes4.figure.canvas.draw()
     except:
+        trc.Trace("failed to draw canvas on average day page")
         plotter.deletepage('average day')
     try:
         guihandle.axes5.figure.canvas.draw()
     except:
+        trc.Trace("failed to draw canvas on average week page")
         plotter.deletepage('average week')
     #
     # retrieve preference for whether targets should be shown
@@ -2065,13 +2153,16 @@ def drawMyGraphs(guihandle, dialog, changeaxesonly):
     if dialog != None:
         dialog.Update(11, 'Complete')
 
+    trc.FunctionExit("drawMyGraphs")
+
 
 #
 # walks the user through connecting to the database used to persist 
 #   historical CurrentCost usage data, and settings and preferences
 # 
 def connectToDatabase(guihandle):
-    global ccdb, ccvis
+    global ccdb, ccvis, trc
+    trc.FunctionEntry("connectToDatabase")
 
     # what is the path to the database used to store CurrentCost data?
     dbLocation = ""
@@ -2107,6 +2198,7 @@ def connectToDatabase(guihandle):
     #  is run. we display an appropriate message, and set the flags to make 
     #  sure that some setup steps are run
     if os.path.isfile(settingsfile) == False:
+        trc.Trace("Unable to find settings file")
         welcome = wx.MessageDialog(None,
                                    "It looks like this is the first time that you've used this application.\n\n"
                                    "The first thing that we need to do is to create a local file which the application can use to store historical CurrentCost readings. \n\n"
@@ -2118,8 +2210,9 @@ def connectToDatabase(guihandle):
         welcome.Destroy()
         askForLocation = True
         appFirstRun = True
-    else:
+    else:        
         # the settings file does exist - we read it now
+        trc.Trace("reading application settings file")
         settingscontents = open(settingsfile, 'r')
         dbLocation = settingscontents.read()
         settingscontents.close()
@@ -2132,12 +2225,16 @@ def connectToDatabase(guihandle):
         if dbLocation == "prompt":
             # settings indicate 'prompt' - so we set flags to make sure that 
             #  the app prompts for the location of a database file
+            trc.Trace("settings file set to 'prompt'")
             askForLocation = True
             locMessage = "Identify which CurrentCost data file you want to use"
         elif os.path.isfile(dbLocation) == False:
             # settings file gave a location of a database file, but no file
             #  could be found at that location. so we display an error, and set
             #  a flag so that a new location can be provided by the user
+            trc.Error("unable to find database file at location identified in settings")
+            trc.Error(" location : " + dbLocation)
+
             askForLocation = True
             storeLocation = True
             locMessage = "Identify the new location of the CurrentCost data file"
@@ -2152,6 +2249,7 @@ def connectToDatabase(guihandle):
 
 
     if askForLocation:
+        trc.Trace("asking user for location of app database file")
         # for whatever reason, we need the user to provide the location of the 
         #  application's database file 
         dialog = wx.FileDialog(None, 
@@ -2163,12 +2261,14 @@ def connectToDatabase(guihandle):
             # new path provided
             #  we don't check it, as the user is allowed to create new files
             dbLocation = dialog.GetPath()
+            trc.Trace("new location provided by user: " + dbLocation)
             dialog.Destroy()
         else:
             # user clicked 'cancel'
             #  there isn't much else we can do, so we display a 'goodbye' 
             #  message and quit
             dialog.Destroy()
+            trc.Trace("user clicked cancel")
             byebye = wx.MessageDialog(None,
                                       "The application needs somewhere to store data. \n\n"
                                       "Sorry, without this, we need to end the app now. Hope you try again later!",
@@ -2176,6 +2276,7 @@ def connectToDatabase(guihandle):
                                       style=(wx.OK | wx.ICON_EXCLAMATION))
             byebye.ShowModal()        
             byebye.Destroy()
+            trc.FunctionExit("connectToDatabase")
             return False
 
 
@@ -2193,8 +2294,10 @@ def connectToDatabase(guihandle):
                                   "Should this be your only CurrentCost file?",
                                   style=(wx.YES | wx.NO | wx.ICON_QUESTION))
         if dialog.ShowModal() == wx.ID_YES:
+            trc.Trace("application to use this database file every time")
             storeLocation = True
         else:
+            trc.Trace("application to prompt for database location on every run")
             settingscontents = open(settingsfile, 'w')
             settingscontents.write("prompt")
             settingscontents.close()
@@ -2251,6 +2354,7 @@ def connectToDatabase(guihandle):
     drawMyGraphs(guihandle, progdlg, False)
     progdlg.Destroy()
 
+    trc.FunctionExit("connectToDatabase")
     return True
 
 
@@ -2327,8 +2431,10 @@ def onMouseClick(event):
 
 
 
-def demo():
-    global frame, plotter
+def appInit():
+    global frame, plotter, trc
+    trc.FunctionEntry("appInit")
+
     app = wx.App()
     frame = MyFrame(None,-1,'CurrentCost')
     #
@@ -2354,12 +2460,27 @@ def demo():
     frame.Show()
     #
     if connectToDatabase(frame) == False:
+        trc.FunctionExit("appInit")
         return
     app.MainLoop()
+    trc.FunctionExit("appInit")
+
     
 
 
+debug = False
+options, rem = getopt.getopt(sys.argv[1:], '', ['debug'])
+for opt, arg in options:
+    if opt == '--debug':
+        debug = True
+
+trc.EnableTrace(debug)
+trc.InitialiseTraceFile()
+
 
 if __name__ == "__main__": 
-    demo()
-
+    try:
+        appInit()
+    except Exception, exc:
+        trc.Error("Unhandled exception")
+        trc.Error(str(exc))

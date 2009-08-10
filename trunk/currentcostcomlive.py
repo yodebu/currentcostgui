@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # CurrentCost GUI
 # 
@@ -24,6 +26,13 @@ import serial
 import time
 import string
 
+# this class provides logging and diagnostics
+from tracer                 import CurrentCostTracer
+
+
+trc = CurrentCostTracer()
+
+
 #
 #  Makes a direct serial connection to a CurrentCost meter, downloads a 
 #   reading and extracts the channel 1 watts reading. This is converted into 
@@ -45,6 +54,8 @@ class CurrentCostSerialLiveConnection():
     # Establish a connection to the CurrentCost meter
     # 
     def EstablishConnection(self, comportobj, guihandle):
+        global trc
+        trc.FunctionEntry("currentcostcomlive :: EstablishConnection")
 
         self.ser = comportobj
         self.toCancel = False
@@ -60,9 +71,11 @@ class CurrentCostSerialLiveConnection():
 
                 try:
                     ccreading = self.parseLiveXML(line)
+                    trc.Trace("reading from live XML: " + str(ccreading))
                     if ccreading >= 0:
                         guihandle.updateGraph(ccreading)
-                except:            
+                except err:
+                    trc.Trace("error encountered parsing XML: " + str(err))
                     # Exiting on a single garbled string from the 
                     #  serial port is a bit extreme - it isn't unusual 
                     #  to get a partial string, particularly if we've 
@@ -74,16 +87,23 @@ class CurrentCostSerialLiveConnection():
                         self.numberOfErrors += 1
                     else:
                         guihandle.exitOnError('Unable to parse reading from meter: ' + str(line))
+                        trc.Trace("encountered our tenth error - quitting")
+                        trc.FunctionExit("currentcostcomlive :: EstablishConnection")
                         return
             except Exception, exception:
+                trc.Trace("encountered error: " + str(exception))
                 if self.toCancel == False:
                     guihandle.exitOnError('Error reading from COM port: ' + str(exception))
+                    trc.FunctionExit("currentcostcomlive :: EstablishConnection")
                     return
 
         try:
+            trc.Trace("disconnecting")
             self.ser.disconnect()
         except:
             self.guicallback.exitOnError('Error when closing COM port')
+
+        trc.FunctionExit("currentcostcomlive :: EstablishConnection")
 
 
     #

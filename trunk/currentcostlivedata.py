@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # CurrentCost GUI
 #
@@ -28,6 +30,12 @@ from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from threading import Thread, Lock
 from currentcostcomlive import CurrentCostSerialLiveConnection
 from nationalgriddata   import NationalGridDataSource
+
+# this class provides logging and diagnostics
+from tracer                 import CurrentCostTracer
+
+
+trc = CurrentCostTracer()
 
 #
 # Displays a graph showing live CurrentCost data. 
@@ -121,6 +129,8 @@ class CurrentCostLiveData():
     # redraw all active graphs
     # 
     def redrawGraph(self):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: redrawGraph")        
 
         self.lock.acquire()
 
@@ -135,11 +145,11 @@ class CurrentCostLiveData():
                                          'r-')
             except Exception, e:
                 if self.closing == False:
-                    print 'DEBUG: error - failed to plot data on livegraph'
-                    print e
-                    print str(e)
-                    print str(e.message)
+                    trc.Error('DEBUG: error - failed to plot data on livegraph')
+                    trc.Error(str(e))
+                    trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         
         if self.livegraphNGDemand != None and len(self.ngdatadates) > 0:
@@ -149,10 +159,11 @@ class CurrentCostLiveData():
                                                  self.ngdemandreadings,
                                                  'b-')
             except Exception, e:
-                print 'DEBUG: error - failed to plot demand data on national grid graph'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to plot demand data on national grid graph')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
 
         if self.livegraphNGFrequency != None and len(self.ngdatadates) > 0:
@@ -169,10 +180,11 @@ class CurrentCostLiveData():
                                                     self.ngfreqzeroline,
                                                     'g-')
             except Exception, e:
-                print 'DEBUG: error - failed to plot frequency data on national grid graph'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to plot frequency data on national grid graph')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
 
         #
@@ -201,30 +213,33 @@ class CurrentCostLiveData():
             for label in self.livegraph.get_xticklabels():
                 label.set_rotation(90)
         except Exception, e:
-            print 'DEBUG: error - failed to rotate axis labels on live graph'
-            print str(e)
-            print str(e.message)
+            trc.Error('DEBUG: error - failed to rotate axis labels on live graph')
+            trc.Error(str(e))
+            trc.Error(str(e.message))
             self.lock.release()
+            trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
         if self.livegraphNGDemand != None:
             try:
                 for label in self.livegraphNGDemand.get_xticklabels():
                     label.set_rotation(90)
             except Exception, e:
-                print 'DEBUG: error - failed to rotate axis labels on NG demand graph'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to rotate axis labels on NG demand graph')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         if self.livegraphNGFrequency != None:
             try:
                 for label in self.livegraphNGFrequency.get_xticklabels():
                     label.set_rotation(90)
             except Exception, e:
-                print 'DEBUG: error - failed to rotate axis labels on NG frequency graph'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to rotate axis labels on NG frequency graph')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         
         #
@@ -260,10 +275,11 @@ class CurrentCostLiveData():
                 for line in self.livegraphNGFrequency.get_yticklines():
                     line.set_markersize(0)
         except Exception, e:
-            print 'DEBUG: error - failed to assign xaxis formatters'
-            print str(e)
-            print str(e.message)
+            trc.Error('DEBUG: error - failed to assign xaxis formatters')
+            trc.Error(str(e))
+            trc.Error(str(e.message))
             self.lock.release()
+            trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
         
         #
@@ -273,33 +289,37 @@ class CurrentCostLiveData():
         try:
             self.livegraph.figure.canvas.draw()
         except Exception, e:
-            print 'DEBUG: error - failed to redraw live canvas'
-            print str(e)
-            print str(e.message)
+            trc.Error('DEBUG: error - failed to redraw live canvas')
+            trc.Error(str(e))
+            trc.Error(str(e.message))
             self.lock.release()
+            trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
         if self.livegraphNGDemand != None:
             try:
                 self.livegraphNGDemand.figure.canvas.draw()
             except Exception, e:
-                print 'DEBUG: error - failed to redraw NG demand canvas'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to redraw NG demand canvas')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         if self.livegraphNGFrequency != None:
             try:
                 self.livegraphNGFrequency.figure.canvas.draw()
             except Exception, e:
-                print 'DEBUG: error - failed to redraw NG frequency canvas'
-                print str(e)
-                print str(e.message)
+                trc.Error('DEBUG: error - failed to redraw NG frequency canvas')
+                trc.Error(str(e))
+                trc.Error(str(e.message))
                 self.lock.release()
+                trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         
         #
         # graph redraw complete
         self.lock.release()
+        trc.FunctionExit("currentcostlivedata :: redrawGraph")
         return True
 
 
@@ -309,6 +329,11 @@ class CurrentCostLiveData():
     #  the new reading is appended to the set, and the graph is refreshed
     # 
     def updateGraph(self, ccreading):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: updateGraph")
+
+        trc.Trace("new data: " + str(ccreading))
+
         if ccreading > 0:
             # store the new reading
             self.ccdates.append(datetime.datetime.now())
@@ -316,7 +341,7 @@ class CurrentCostLiveData():
     
             # redraw the graph with the new reading
             self.redrawGraph()
-
+        trc.FunctionExit("currentcostlivedata :: updateGraph")
 
     #
     # prepare the graph used to display live CurrentCost data
@@ -332,6 +357,9 @@ class CurrentCostLiveData():
     # called to create a connection to the CurrentCost meter
     # 
     def connect(self, guihandle, connType, graphaxes, ipaddr, topic, com):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: connect")
+
         # store globals
         self.connectionType = connType
         self.livegraph = graphaxes
@@ -345,6 +373,7 @@ class CurrentCostLiveData():
             self.starttime = datetime.datetime.now()
 
         if self.connectionType == self.CONNECTION_MQTT:
+            trc.Trace("connection type: MQTT")
             self.ipaddress = ipaddr
             self.topicstring = topic
     
@@ -354,6 +383,7 @@ class CurrentCostLiveData():
             backgroundThread = MQTTUpdateThread(self.mqttClient, ipaddr, topic, self)
             backgroundThread.start()
         elif self.connectionType == self.CONNECTION_SERIAL:
+            trc.Trace("connection type: serial")
             self.comport = com
 
             self.comClient = CurrentCostSerialLiveConnection()
@@ -361,7 +391,9 @@ class CurrentCostLiveData():
             backgroundThread = SerialUpdateThread(self.comClient, com, self)
             backgroundThread.start()
         else:
-            print 'Unsupported connection type'
+            trc.Error("unsupported connection type : " + str(self.connectionType))
+
+        trc.FunctionExit("currentcostlivedata :: connect")
 
 
     # 
@@ -370,6 +402,8 @@ class CurrentCostLiveData():
     #  existing graph should be left untouched
     # 
     def disconnect(self):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: disconnect")
         self.closing = True
         
         if self.connectionType == self.CONNECTION_MQTT:
@@ -386,14 +420,21 @@ class CurrentCostLiveData():
         self.connectionType = self.CONNECTION_NONE
         self.livegraph = None
 
+        trc.FunctionExit("currentcostlivedata :: disconnect")
+
     #
     # called to return an error to the GUI for displaying to the user
     # 
     #  we disconnect before displaying the error
     # 
     def exitOnError(self, errmsg):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: exitOnError")
         self.disconnect()
-        self.guicallback.displayLiveConnectFailure(errmsg)
+        if (self.guicallback != None):
+            self.guicallback.displayLiveConnectFailure(errmsg)
+        trc.Trace("error message : " + str(errmsg))
+        trc.FunctionExit("currentcostlivedata :: exitOnError")
 
 
     #
