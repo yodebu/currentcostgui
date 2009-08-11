@@ -537,7 +537,8 @@ class MyFrame(wx.Frame):
         self.downloadData(gae)
 
     def downloadData(self, gae):
-        global plotter, ccdb, ccvis
+        global plotter, ccdb, ccvis, trc
+        trc.FunctionEntry("downloadData")
 
         hourDataCollection = ccdb.GetHourDataCollection()
         dayDataCollection = ccdb.GetDayDataCollection()
@@ -547,6 +548,7 @@ class MyFrame(wx.Frame):
         averageWeekData = ccdata.CalculateAverageWeek(dayDataCollection)
 
         groupgoogledata, daygoogledata = gae.DownloadCurrentCostDataFromGoogle(self, ccdb)
+        trc.Trace("found " + str(len(groupgoogledata)) + " groups on Google")
         if groupgoogledata:
             for group in groupgoogledata:
                 tabname = groupgoogledata[group].groupname + " : week"
@@ -558,6 +560,8 @@ class MyFrame(wx.Frame):
             plotter.deletepage(tabname)
             dayaxes = plotter.add(tabname).gca()            
             ccvis.PlotDailyScatterGraph(dayaxes, averageWeekData, daygoogledata)
+
+        trc.FunctionExit("downloadData")
 
     #
     # upload user data to Google
