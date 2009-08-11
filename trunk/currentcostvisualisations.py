@@ -487,6 +487,8 @@ class CurrentCostVisualisations:
     # plot average daily usage for specific users
     # 
     def PlotDailyScatterGraph(self, daydataaxes, averageWeekData, dailyData):
+        global trc
+        trc.FunctionEntry("PlotDailyScatterGraph")
 
         # prepare store of x,y values for scatter graph
         personaldates = []
@@ -567,8 +569,10 @@ class CurrentCostVisualisations:
         daydataaxes.set_title('Everyone\'s average daily power usage')
 
         # plot the set of x,y values
-        daydataaxes.scatter(everyonedates, everyonedata, s=80,  color="green", marker='x')
-        daydataaxes.scatter(personaldates, personaldata, s=120, color="red",   marker='^')
+        if len(everyonedata) > 0:
+            daydataaxes.scatter(everyonedates, everyonedata, s=80,  color="green", marker='x')
+        if len(personaldata) > 0:
+            daydataaxes.scatter(personaldates, personaldata, s=120, color="red",   marker='^')
 
         # format the canvas        
         daydataaxes.xaxis.set_major_formatter(DateFormatter('%a'))
@@ -579,6 +583,7 @@ class CurrentCostVisualisations:
         # finished! draw the graph
         daydataaxes.figure.canvas.draw()
 
+        trc.FunctionExit("PlotDailyScatterGraph")
 
     #
     # 'Target Line' - a horizontal line we can draw across bar graphs to give

@@ -234,7 +234,10 @@ class CurrentCostDataFunctions():
         hoursAvg   = {}
 
         if len(hourData) == 0:
-            return None
+            for i in range(0, 24):
+                avtime = datetime.datetime(2000, 1, 1, i, 0, 0)   # don't care about the date - wont be seen
+                hoursAvg[avtime] = 0
+            return hoursAvg
 
         for k, v in hourData.iteritems():
             if v > 0:
@@ -255,7 +258,10 @@ class CurrentCostDataFunctions():
         weekAvg = {}
 
         if len(dayData) == 0:
-            return None
+            for i in range(0, 7):
+                avday = datetime.datetime(2008, 9, i+1)    # chosen a week where i = 0 will create a Monday
+                weekAvg[avday] = 0
+            return weekAvg
 
         for k, v in dayData.iteritems():
             if v > 0:
