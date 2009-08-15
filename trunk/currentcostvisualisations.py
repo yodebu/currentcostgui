@@ -119,6 +119,7 @@ class CurrentCostVisualisations:
 
         # plot each hour data item
         for k, v in hourData.iteritems():
+            trc.Trace(str(k) + " : " + str(v))
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
             # often throwing an exception if we try!
             if v > 0:
@@ -158,6 +159,8 @@ class CurrentCostVisualisations:
 
         # plot each day data item
         for k, v in dayData.iteritems():
+            trc.Trace(str(k) + " : " + str(v))
+
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
             # often throwing an exception if we try!
             if v > 0:
@@ -198,6 +201,8 @@ class CurrentCostVisualisations:
 
         # plot each hour data item
         for k, v in monthData.iteritems():
+            trc.Trace(str(k) + " : " + str(v))
+
             # we don't plot 0 items - matplotlib doesn't handle it very well, 
             # often throwing an exception if we try!
             if v > 0:

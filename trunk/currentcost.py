@@ -1894,15 +1894,24 @@ def getDataFromCurrentCostMeter(portdet, dialog):
     # we keep trying to get an update from the CurrentCost meter
     #  until we successfully populate the CurrentCost data object
     currentcoststruct = None
+
     # the newer CC128 meter splits the history data over multiple updates
     # we use this number to indicate how many updates are remaining
     updatesremaining = 1
+
+    validLiveUpdates    = 0
+    validHistoryUpdates = 0
+    invalidUpdates      = 0
+
+    loopMessage = "Waiting for data from CurrentCost meter"
+
     while updatesremaining > 0:
-        (tocontinue, toskip) = dialog.Update(1, 'Waiting for data from CurrentCost (' + str(updatesremaining) + ' update(s) remaining)')
+        (tocontinue, toskip) = dialog.Update(1, loopMessage)
         if tocontinue == False:
             if reuseconnection == False:
-                trc.Trace("User cancelled. Closing connection to CurrentCost meter")
-                dialog.Update(10, 'Cancelled. Closing connection to CurrentCost meter')
+                loopMessage = "User cancelled. Closing connection to CurrentCost meter"
+                trc.Trace(loopMessage)
+                dialog.Update(10, loopMessage)
                 myserialconn.disconnect()
             dialog.Update(11, 'Cancelled.')
             trc.FunctionExit("getDataFromCurrentCostMeter")
@@ -1946,8 +1955,14 @@ def getDataFromCurrentCostMeter(portdet, dialog):
 
         if currentcoststruct == None:
             # something wrong with the line of xml we received
-            dialog.Update(1, 'Received invalid data from CurrentCost meter. Waiting for a new reading')
-            trc.Trace('Received invalid data from CurrentCost meter. Waiting for a new reading')
+            invalidUpdates += 1
+            loopMessage = datetime.datetime.now().strftime("%H:%M:%S") + \
+                          " : Received " + \
+                          str(validHistoryUpdates) + " updates with history data, " + \
+                          str(validLiveUpdates) + " updates with live (no history) data \n" + \
+                          str(invalidUpdates) + " invalid updates"
+            dialog.Update(1, loopMessage)
+            trc.Trace("Received data that could not be parsed")
         elif 'hist' not in currentcoststruct['msg']:
             # we received something which looked like valid CurrentCost data,
             #  but did not contain any history data
@@ -1958,8 +1973,16 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #        in which case we have finished and need to break out of 
             #        the loop we are in
             trc.Trace("received (valid?) CurrentCost data without any history data")
+            validLiveUpdates += 1
 
-            if type(currentcoststruct['msg']['src']) is str and currentcoststruct['msg']['src'].startswith('CC128-v0.'):
+            loopMessage = datetime.datetime.now().strftime("%H:%M:%S") +  \
+                          " : Received " + \
+                          str(validHistoryUpdates) + " updates with history data, " + \
+                          str(validLiveUpdates) + " updates with live (no history) data \n" + \
+                          str(invalidUpdates) + " invalid updates"
+            #loopMessage = datetime.datetime.now().strftime("%H:%M:%S") + " : Received data from CurrentCost meter (live only, no history information)"
+
+            if type(currentcoststruct['msg']['src']) is unicode and currentcoststruct['msg']['src'].startswith('CC128-v0.'):
                 # HACK!
                 # this may or may not be true - there is a potential that a 
                 # CC128 meter returned us some data (e.g. broken or partial XML)
@@ -1971,10 +1994,12 @@ def getDataFromCurrentCostMeter(portdet, dialog):
                 # for now, we just assume that when the meter stops outputting 
                 # history, then it has finished correctly
                 # probably something to come back to at a future date!
-                trc.Trace("data received from CC128. assuming that there is no history data remaining")
-                updatesremaining = 0
+                trc.Trace("live data received from CC128. assuming that there is no history data remaining")
+                if validHistoryUpdates > 0:
+                    updatesremaining = 0
+                dialog.Update(1, loopMessage)
             else:
-                dialog.Update(1, 'Waiting for history data from CurrentCost meter')
+                dialog.Update(1, loopMessage) # 'Waiting for history data from CurrentCost meter')
                 trc.Trace("waiting for history data")
         else:
             # we have received history data - parse and store the CurrentCost 
@@ -1983,6 +2008,12 @@ def getDataFromCurrentCostMeter(portdet, dialog):
             #  (0 if this was the last or only expected update)
             updatesremaining = myparser.storeTimedCurrentCostData(ccdb)
             trc.Trace("stored history data. think there are now " + str(updatesremaining) + " updates remaining")
+            validHistoryUpdates += 1
+            loopMessage = datetime.datetime.now().strftime("%H:%M:%S") + \
+                          " : Received " + \
+                          str(validHistoryUpdates) + " updates with history data, " + \
+                          str(validLiveUpdates) + " updates with live (no history) data \n" + \
+                          str(invalidUpdates) + " invalid updates"
 
     dialog.Update(2, 'Received complete history data from CurrentCost meter')
     #
