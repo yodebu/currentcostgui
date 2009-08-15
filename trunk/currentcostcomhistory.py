@@ -28,6 +28,10 @@ import string
 
 from currentcostparser import CurrentCostDataParser
 from currentcostdb     import CurrentCostDB
+from tracer            import CurrentCostTracer 
+
+# class for logging diagnostics
+trc = CurrentCostTracer()
 
 #
 #  
@@ -42,7 +46,8 @@ class CurrentCostSerialHistoryConnection():
     # Establish a connection to the CurrentCost meter
     # 
     def EstablishConnection(self, comportobj, guihandle, dbfilelocation):
-
+        global trc
+        trc.FunctionEntry("EstablishConnection")
         self.ser = comportobj
         self.toCancel = False
 
@@ -84,6 +89,9 @@ class CurrentCostSerialHistoryConnection():
             except Exception, exception:
                 if self.toCancel == False:
                     guihandle.exitOnError('Error reading from COM port: ' + str(exception))
+                    trc.Error("Error when closing COM port")
+                    trc.Error(str(exception))
+                    trc.FunctionExit("EstablishConnection")
                     return
 
 
@@ -92,9 +100,12 @@ class CurrentCostSerialHistoryConnection():
 
         try:
             self.ser.disconnect()
-        except:
+        except Exception, exc:
             self.guicallback.exitOnError('Error when closing COM port')
+            trc.Error("Error when closing COM port")
+            trc.Error(str(exc))
 
+        trc.FunctionExit("EstablishConnection")
 
     #
     # Disconnect from the MQTT broker
