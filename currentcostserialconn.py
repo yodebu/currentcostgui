@@ -61,6 +61,7 @@ class CurrentCostConnection:
         # check if already connected - reuse existing connection if possible
         if self.connection != None:
             trc.Trace("already connected - will reuse existing connection")
+            trc.FunctionExit("currentcostserialconn :: connect")
             return True
 
         # the 'classic' meters are still the most common, so we try that first
