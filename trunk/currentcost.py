@@ -221,7 +221,6 @@ class MyFrame(wx.Frame):
     MENU_HIST_S_MQTT = None
     MENU_LIVE_DEMAND = None
     MENU_LIVE_SUPPLY = None
-    
 
     #
     # these are the different graphs that we draw on
@@ -448,7 +447,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.26"
+        info.Version = "0.9.27"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -504,7 +503,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.26":
+        elif latestversion != "0.9.27":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -985,6 +984,10 @@ class MyFrame(wx.Frame):
     # 
     # 
 
+    # used to call onRedrawGraphs from a non-GUI thread
+    def requestRedrawGraphs(self):
+        wx.CallAfter(self.onRedrawGraphs, None)
+
     # redraw the graphs
     #
     # this is a temporary kludge - when using 'download all' to keep an open 
@@ -1018,7 +1021,7 @@ class MyFrame(wx.Frame):
             # update the GUI to show what the user has selected
             self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
             self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-            self.stopBackgroundGraphing()
+            #self.stopBackgroundGraphing()
             trc.FunctionExit("onDownloadAllSerial")
             return
 
@@ -1042,7 +1045,7 @@ class MyFrame(wx.Frame):
             # update the GUI to show what the user has selected
             self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  True)
             self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-            self.startBackgroundGraphing()
+            #self.startBackgroundGraphing()
         else:
             trc.Trace("creating a new serial connection")
             # serial port not already connected, so we need to connect now
@@ -1085,11 +1088,12 @@ class MyFrame(wx.Frame):
                     errdlg.Destroy()
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-                    self.stopBackgroundGraphing()
+                    #self.stopBackgroundGraphing()
                     trc.FunctionExit("onDownloadAllSerial")
                     return False
-                except:
+                except Exception, err:
                     trc.Error("Failed to connect to CurrentCost meter")
+                    trc.Error(str(err))
                     errdlg = wx.MessageDialog(None,
                                               'CurrentCost',
                                               'Failed to connect to CurrentCost meter',
@@ -1098,7 +1102,7 @@ class MyFrame(wx.Frame):
                     errdlg.Destroy()
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                     self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-                    self.stopBackgroundGraphing()
+                    #self.stopBackgroundGraphing()
                     trc.FunctionExit("onDownloadAllSerial")
                     return False
     
@@ -1111,12 +1115,12 @@ class MyFrame(wx.Frame):
                 # update the GUI to show what the user has selected
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  True)
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-                self.startBackgroundGraphing()
+                #self.startBackgroundGraphing()
             else:
                 # update the GUI to show that the user has cancelled
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_COM,  False)
                 self.MENU_HIST_S.Check(self.MENU_HIST_S_MQTT, False)
-                self.stopBackgroundGraphing()
+                #self.stopBackgroundGraphing()
             dlg.Destroy()
 
         trc.FunctionExit("onDownloadAllSerial")
@@ -1241,7 +1245,7 @@ class MyFrame(wx.Frame):
                                style=(wx.OK | wx.ICON_INFORMATION))
         dlg.ShowModal()
         dlg.Destroy()
-
+        
 
 
     def stopBackgroundGraphing(self):

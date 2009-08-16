@@ -42,6 +42,8 @@ trc = CurrentCostTracer()
 
 class CurrentCostSerialHistoryConnection():
 
+    guicallback = None
+
     #
     # Establish a connection to the CurrentCost meter
     # 
@@ -50,6 +52,7 @@ class CurrentCostSerialHistoryConnection():
         trc.FunctionEntry("EstablishConnection")
         self.ser = comportobj
         self.toCancel = False
+        self.guicallback = guihandle
 
         myparser = CurrentCostDataParser()
 
@@ -71,6 +74,7 @@ class CurrentCostSerialHistoryConnection():
         # look for the current reading in the data
         # 
         line = ""
+        receivedHistory = False
         while self.toCancel == False:
             try:
                 line = self.ser.readUpdate()
@@ -85,10 +89,18 @@ class CurrentCostSerialHistoryConnection():
                         # the parser will return the number of updates still expected 
                         #  (0 if this was the last or only expected update)
                         myparser.storeTimedCurrentCostData(dbconnection)
+                        receivedHistory = True
+                    elif receivedHistory == True:
+                        # we received live data only
+                        # if we have received un-graphed history data, we refresh the
+                        # graphs now
+                        trc.Trace("finished receiving history data - need to redraw graphs")
+                        self.guicallback.updateGraphs()
+                        receivedHistory = False
                 
             except Exception, exception:
                 if self.toCancel == False:
-                    guihandle.exitOnError('Error reading from COM port: ' + str(exception))
+                    self.guicallback.exitOnError('Error reading from COM port: ' + str(exception))
                     trc.Error("Error when closing COM port")
                     trc.Error(str(exception))
                     trc.FunctionExit("EstablishConnection")
@@ -108,7 +120,7 @@ class CurrentCostSerialHistoryConnection():
         trc.FunctionExit("EstablishConnection")
 
     #
-    # Disconnect from the MQTT broker
+    # Disconnect from the serial port
     # 
     def Disconnect(self):
         self.toCancel = True
