@@ -4,7 +4,7 @@
 =Intro=
 In Feb 2009, CurrentCost brought out a new version of their monitor - the 'ENVI', also known as the 'CC128'. ^{1}^
 
-My CurrentCost GUI does work with the CC128, however the support is a little quirky. This page describes how it works now and why, and how I plan to improve it. 
+My CurrentCost GUI does work with the CC128, however the support is a little quirky. This page describes how it works now and why. 
 
 =Background=
 The previous version of the CurrentCost monitor outputs a full copy of it's records of historical electricity usage every six seconds. I wrote my CurrentCost software to take advantage of this - it spends most of the time relying on the CurrentCost meter to store history, and whenever the user wants, they can request that the application connect to the meter to get the latest history data^{2}^. At most this would take 12 seconds or so, and then the application disconnects.
@@ -16,50 +16,30 @@ The CC128 works differently. It *doesn't* output full history every six seconds 
 And it doesn't output the whole history in one message - it splits it up into several^{4}^ messages, each bit output every six seconds. You need to wait for all of the messages to get the full history.
 
 =How the software works now=
-~~As a first, quick attempt to get the software to work with the new meter, I only updated the parser (to handle the new data format^{7}^) and added the ability to wait for multiple messages and reconstruct the history from several bits. The overall approach is still the same.~~
+==Stay connected==
+'Download history' --> 'Stay connected' was added to make life easier with the CC128.
 
-~~You still need to tell the app to connect to the meter long enough to receive the history^{2}^, after which time it will disconnect.~~
-
-~~However, for this to work, the meter needs to be outputting history data when you do this.~~
-
-~~Which means you either:
-
-~~a) Do this at 1 minute past the hour; or~~
-
-~~b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^~~
-
-~~Note that it's a little fiddly - the meter has to already be outputting history data at the point where the software connects, otherwise the software assumes that the meter has no history and/or has finished outputting it.~~
-
-'Download data' --> 'Stay connected' was added to make life easier with the CC128.
-
-If you have a CC128 meter, you should click on 'Download data' --> 'Stay connected' *and then* either:
+If you have a CC128 meter, you can click on 'Download history' --> 'Stay connected' *and then* either:
 
 a) Leave it running until at least 1 minute past an odd numbered hour; or
 
-b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^~~
+b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^
 
-History data will be received and stored in the background. However, graphs will not be updated with the new data until you restart the app, or manually refresh the graphs using 'Download History' -> 'Stay connected' -> 'Redraw graphs'
-
-_This is a temporary limitation - future versions of the application will update graphs automatically._
-
-=Looking ahead=
-I am in the process of re-writing the code to better support CC128 meters. 
-
-I am redesigning the download-data/redraw-graphs code, to move away from the do-it-all-at-once-when-user-requests approach. 
-
-The software will let you connect to the meter once and leave the connection open. Rather than putting up a progress bar and making the user wait until all of the messages have been received^{6}^, this will be done silently in the background. 
-
-Once my changes to the code are complete, if/when the software receives history data from the meter, the graphs will be updated and refreshed. 
+History data will be received and stored in the background. When a block of new history data is received, graphs will be updated with the new data. 
 
 As long as the application is running and connected at 1 minute past the hour, then it will receive updated data - without you needing to time your connection^{2}^ just right! And if you miss one history window, it doesn't matter - the meter stores the data for ages, so you can always let the software catch the next one.
 
-I hope this will be a preferred approach, but please let me know if you disagree. 
+==Download once==
+Alternatively, you can still use 'Download history' --> 'Download once'
 
-I don't know when this will be completed - but if you are interested in my progress, you can always see the latest state of [http://code.google.com/p/currentcostgui/source/browse/ the code in CVS] or just ask me.
+Just click on that to make the connection first, and you should see the dialog box with an increasing number of updates received with only live (no history) data. Then, either:
+
+a) Leave it running until at least 1 minute past an odd numbered hour; or
+
+b) Force the meter to start producing history data by pressing and holding the 'Down' and 'OK' buttons.^{5}^
 
 
-
-==Notes==
+=Notes=
 {1} - For more background about the meter, you can read about it on [http://currentcost.com/product-cc128.html CurrentCost.com] or on [http://dalelane.co.uk/blog/?p=389 my blog].
 
 {2} - By clicking on: Download data -> Download history data... (connect directly)
