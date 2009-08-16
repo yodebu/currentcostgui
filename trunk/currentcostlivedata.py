@@ -28,13 +28,13 @@ import datetime
 from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from threading import Thread, Lock
+
 from currentcostcomlive import CurrentCostSerialLiveConnection
 from nationalgriddata   import NationalGridDataSource
+from tracer             import CurrentCostTracer
+
 
 # this class provides logging and diagnostics
-from tracer                 import CurrentCostTracer
-
-
 trc = CurrentCostTracer()
 
 #
