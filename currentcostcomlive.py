@@ -165,7 +165,7 @@ class CurrentCostSerialLiveConnection():
 
 
     #
-    # Disconnect from the MQTT broker
+    # Disconnect from the serial port
     # 
     def Disconnect(self):
         self.toCancel = True

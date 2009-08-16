@@ -58,7 +58,7 @@ class CurrentCostTracer():
             stackDepth = 0
             indentStr  = ""
     
-            logging.info("CurrentCost software - v 0.9.26")
+            logging.info("CurrentCost software - v 0.9.27")
             logging.info("-------------------------------")
 
 

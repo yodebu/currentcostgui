@@ -142,6 +142,8 @@ class CurrentCostHistoryData():
         self.guicallback.displayHistoryConnectFailure(errmsg)
 
 
+    def updateGraphs(self):
+        self.guicallback.requestRedrawGraphs()
 
 
 # a background thread used to create an MQTT connection
