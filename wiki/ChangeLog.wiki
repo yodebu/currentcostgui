@@ -3,7 +3,7 @@
 See [Features] for a description of features added
 
 ||0.9.27 || Improved support for managing connections to CC128 meters ||
-||0.9.26 || Bug fixes
+||0.9.26 || Bug fixes ||
 ||0.9.25 || Added support for collecting diagnostics and error information ||
 ||0.9.24 || Added support for exporting live data to CSV ||
 ||0.9.23 || Added buttons to toolbars to pan the graphs ||
