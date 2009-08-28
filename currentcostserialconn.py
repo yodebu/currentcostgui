@@ -78,7 +78,7 @@ class CurrentCostConnection:
             # we assume that a decent connection should output at least one 
             #  '<' in any 20 bytes of data received
             trc.Trace("connection apparently successful - sanity testing by reading 20 bytes from the meter:")
-            testdata = self.connection.read(20)
+            testdata = self.connection.readline()
             trc.Trace(str(testdata))
             xmlsearch = testdata.find('<')
             if xmlsearch != -1:
@@ -168,7 +168,7 @@ class CurrentCostConnection:
                 raise err
             except Exception, msg:
                 trc.Error("encountered error while trying to read from CurrentCost meter")
-                trc.Error("Exception " + str(err))
+                trc.Error("Exception " + str(msg))
                 self.disconnect()
                 trc.FunctionExit("currentcostserialconn :: readUpdate")
                 raise msg

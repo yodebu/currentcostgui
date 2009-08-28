@@ -29,9 +29,10 @@ from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatt
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from threading import Thread, Lock
 
-from currentcostcomlive import CurrentCostSerialLiveConnection
-from nationalgriddata   import NationalGridDataSource
-from tracer             import CurrentCostTracer
+from currentcostcomlive    import CurrentCostSerialLiveConnection
+from nationalgriddata      import NationalGridDataSource
+from electricitygeneration import CurrentCostElectricityGeneration
+from tracer                import CurrentCostTracer
 
 
 # this class provides logging and diagnostics
@@ -72,6 +73,7 @@ class CurrentCostLiveData():
     #       the third reading
     ccdates = []
     ccreadings = []
+    ccsplitreadings = []
 
     #
     # National Grid data store - dates and the readings
@@ -95,6 +97,8 @@ class CurrentCostLiveData():
     mqttClient = None
     comClient  = None
     ngdClient  = None
+
+    genClient  = CurrentCostElectricityGeneration()
 
     # when did we start tracking live data?
     starttime = None
@@ -145,9 +149,11 @@ class CurrentCostLiveData():
                                          'r-')
             except Exception, e:
                 if self.closing == False:
-                    trc.Error('DEBUG: error - failed to plot data on livegraph')
+                    trc.Error('Failed to plot data on livegraph')
                     trc.Error(str(e))
                     trc.Error(str(e.message))
+                    trc.Error("have " + str(len(self.ccdates)) + " dates and " + 
+                              str(len(self.ccreadings)) + " data points")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
@@ -336,11 +342,18 @@ class CurrentCostLiveData():
 
         if ccreading > 0:
             # store the new reading
-            self.ccdates.append(datetime.datetime.now())
-            self.ccreadings.append(ccreading)
-    
+            try:
+                self.ccdates.append(datetime.datetime.now())
+                self.ccreadings.append(ccreading)
+                self.ccsplitreadings.append(self.genClient.splitBySource(ccreading))
+                trc.Trace("stored reading")
+            except Exception, err:
+                trc.Error("failed to store live reading")
+                trc.Error(str(err))
+              
             # redraw the graph with the new reading
             self.redrawGraph()
+
         trc.FunctionExit("currentcostlivedata :: updateGraph")
 
     #
@@ -359,6 +372,19 @@ class CurrentCostLiveData():
     def connect(self, guihandle, connType, graphaxes, ipaddr, topic, com):
         global trc
         trc.FunctionEntry("currentcostlivedata :: connect")
+
+        # start background thread
+        qDlg = wx.MessageDialog(guihandle, 
+                                "Would you like to download National Grid generation data? (Requires an Internet connection).\n" +
+                                " If 'Yes', this will download data about the source of National Grid electricity while Live data is collected.\n" + 
+                                " Click on 'Show live data' -> 'National electricity generation' to display data collected", 
+                                "CurrentCost", 
+                                style=(wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION))
+        dwldResponse = qDlg.ShowModal()
+        qDlg.Destroy()
+
+        if dwldResponse == wx.ID_YES:
+            self.genClient.startBackgroundThread()
 
         # store globals
         self.connectionType = connType
@@ -415,6 +441,8 @@ class CurrentCostLiveData():
 
         if self.ngdClient != None:
             self.ngdClient.stopUpdates()
+
+        self.genClient.stopBackgroundThread()
 
         # re-initialise variables
         self.connectionType = self.CONNECTION_NONE
@@ -618,6 +646,17 @@ class CurrentCostLiveData():
         else:
             return ''
 
+    def prepareElectricitySourceGraph(self, targetTab):
+        global trc
+        trc.FunctionEntry("prepareElectricitySourceGraph")
+        # TODO - protect against emptry data
+        self.genClient.initialiseGraph(list(self.ccdates), 
+                                       list(self.ccsplitreadings),
+                                       targetTab, 
+                                       self.stddatefmtter)
+        trc.FunctionExit("prepareElectricitySourceGraph")
+
+
 
 # a background thread used to create an MQTT connection
 class MQTTUpdateThread(Thread):
@@ -660,3 +699,4 @@ class NationalGridUpdateThread(Thread):
             demand, freq = self.ngdata.ParseRealtimeHTML(nghtml)
             self.graphhandle.updateNationalGridGraph(demand, freq)
         
+

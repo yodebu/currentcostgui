@@ -261,6 +261,7 @@ class MyFrame(wx.Frame):
         #           |
         #           +---  Show live demand                      MENU_LIVE_DEMAND
         #           +---  Show supply vs demand                 MENU_LIVE_SUPPLY
+        #           +---  Show electricity generation       MENU_LIVE_GENERATION
         # 
         # 
         # 
@@ -274,6 +275,7 @@ class MyFrame(wx.Frame):
         self.MENU_LIVE_MQTT     = wx.NewId()
         self.MENU_LIVE_DEMAND   = wx.NewId()
         self.MENU_LIVE_SUPPLY   = wx.NewId()
+        MENU_LIVE_GENERATION    = wx.NewId()
         MENU_REDRAW_GRAPHS      = wx.NewId()
         MENU_LOADDB             = wx.NewId()
         self.MENU_SHOWKWH       = wx.NewId()
@@ -317,6 +319,7 @@ class MyFrame(wx.Frame):
         self.MENU_LIVE.AppendSeparator()
         self.MENU_LIVE.Append(self.MENU_LIVE_DEMAND, "National electricity demand",    "Show live data from the National Grid website showing national electricity demand", kind=wx.ITEM_CHECK)
         self.MENU_LIVE.Append(self.MENU_LIVE_SUPPLY, "National Grid supply vs demand", "Show live data from the National Grid website from the grid frequency", kind=wx.ITEM_CHECK)
+        self.MENU_LIVE.Append(MENU_LIVE_GENERATION, "National electricity generation", "Show live electricity usage divided by the source of generated power")
 
         self.f1 = wx.Menu()
         self.f1.Append(self.MENU_SHOWKWH, "Display kWH", "Show kWH on CurrentCost graphs", kind=wx.ITEM_CHECK)
@@ -399,6 +402,7 @@ class MyFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.openHelpUrl,          id=MENU_HELPDOC)
         self.Bind(wx.EVT_MENU, self.onNationalGridDemand, id=self.MENU_LIVE_DEMAND)
         self.Bind(wx.EVT_MENU, self.onNationalGridFreq,   id=self.MENU_LIVE_SUPPLY)
+        self.Bind(wx.EVT_MENU, self.onNationalGridGen,    id=MENU_LIVE_GENERATION)
         self.Bind(wx.EVT_MENU, self.onToggleTrace,        id=MENU_TRACE)
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
@@ -447,7 +451,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.27"
+        info.Version = "0.9.28"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -503,7 +507,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.27":
+        elif latestversion != "0.9.28":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -1533,6 +1537,34 @@ class MyFrame(wx.Frame):
             livedataagent.stopNationalGridFrequencyData()
         else:
             livedataagent.startNationalGridFrequencyData(self.liveaxes)
+
+
+    def onNationalGridGen(self, event):
+        global trc, livedataagent, plotter
+        trc.FunctionEntry("onNationalGridGen")
+
+        if self.liveaxes == None:
+            trc.Trace("no live data to display")
+            dlg = wx.MessageDialog(self,
+                                   "This function displays data from the 'live' tab, breaking it down into the "
+                                   "different sources of the generated electricity\n\n"
+                                   "Please start the live graphing first before using this.",
+                                   'CurrentCost', 
+                                   style=(wx.OK | wx.ICON_EXCLAMATION))
+            dlg.ShowModal()        
+            dlg.Destroy()
+            trc.FunctionExit("onNationalGridGen")
+            return
+
+        trc.Trace("creating a new tab to display the generation data")
+        plotter.deletepage('source')
+        newSourceTab = plotter.add('source').gca()
+        plotter.selectpage('source')
+
+        trc.Trace("displaying the stacked graph")
+        livedataagent.prepareElectricitySourceGraph(newSourceTab)
+
+        trc.FunctionExit("onNationalGridGen")
 
 
     #
