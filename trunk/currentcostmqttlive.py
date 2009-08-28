@@ -28,6 +28,12 @@ import string
 from string import atoi, atof
 
 from mqttClient import *
+from tracer          import CurrentCostTracer
+
+
+# this class provides logging and diagnostics
+trc = CurrentCostTracer()
+
 
 #
 # Many CurrentCost users have their meters connected to a RSMB (Really Small
@@ -51,6 +57,9 @@ class CurrentCostMQTTLiveConnection():
     # Establish a connection to the MQTT broker
     # 
     def EstablishConnection(self, ipaddr, topicString, guihandle):
+        global trc
+        trc.FunctionEntry("currentcostmqttlive :: EstablishConnection")
+
         #
         # try and make the connection to the Broker
         # 
@@ -61,6 +70,8 @@ class CurrentCostMQTTLiveConnection():
             connection.connect()
         except ConnectFailedException, exception:
             guihandle.exitOnError("Unable to connect (" + str(exception) + ")")
+            trc.Error("Unable to connect (" + str(exception) + ")")
+            trc.FunctionExit("currentcostmqttlive :: EstablishConnection")
             return
 
         #
@@ -74,7 +85,11 @@ class CurrentCostMQTTLiveConnection():
             self.subscriber.subscribe()
         except SubscribeFailedException, exception:
             guihandle.exitOnError("Unable to subscribe to topic (" + str(exception) + ")")
+            trc.Error("Unable to connect (" + str(exception) + ")")
+            trc.FunctionExit("currentcostmqttlive :: EstablishConnection")
             return
+
+        trc.FunctionExit("currentcostmqttlive :: EstablishConnection")
 
     #
     # Disconnect from the MQTT broker
@@ -97,20 +112,28 @@ class CurrentCostMQTTSubscriber(MqttSubscriber):
 
     # store handles to use for callbacks
     def registerGuiCallbacks(self, ccgui, connection):
+        global trc
+        trc.FunctionEntry("CurrentCostMQTTSubscriber :: registerGuiCallbacks")
         self.guicallback = ccgui
         self.mqttconnection = connection
+        trc.FunctionExit("CurrentCostMQTTSubscriber :: registerGuiCallbacks")
 
     # when a message is received, try and cast it to a float value for kwh
     #  and pass it back to the GUI for displaying
     def messageReceived(self, message):
+        global trc
+        trc.FunctionEntry("CurrentCostMQTTSubscriber :: messageReceived")
         MqttSubscriber.messageReceived(self, message)
         ccreading = None
         try:
             ccreading = float(message.data)
-        except:            
+        except:
+            trc.Error("Unable to parse reading from meter : " + str(message.data))
             self.guicallback.exitOnError('Unable to parse reading from meter: ' + str(message.data))
+            trc.FunctionExit("CurrentCostMQTTSubscriber :: messageReceived")
             return
-        self.guicallback.updateGraph(message.data)
+        self.guicallback.updateGraph(ccreading)
+        trc.FunctionExit("CurrentCostMQTTSubscriber :: messageReceived")
 
     # disconnect when complete
     def endconnection(self):

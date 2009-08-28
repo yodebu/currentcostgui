@@ -49,6 +49,7 @@ trc = CurrentCostTracer()
 class CurrentCostSerialLiveConnection():
 
     numberOfErrors = 0
+    guicallback = None
 
     #
     # Establish a connection to the CurrentCost meter
@@ -57,6 +58,7 @@ class CurrentCostSerialLiveConnection():
         global trc
         trc.FunctionEntry("currentcostcomlive :: EstablishConnection")
 
+        self.guicallback = guihandle
         self.ser = comportobj
         self.toCancel = False
         self.numberOfErrors = 0

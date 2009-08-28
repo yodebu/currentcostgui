@@ -29,7 +29,13 @@ import wx
 from string import atoi, atof
 
 from mqttClient import *
+
 from currentcostdata import CurrentCostUpdate
+from tracer          import CurrentCostTracer
+
+
+# this class provides logging and diagnostics
+trc = CurrentCostTracer()
 
 #
 # Many CurrentCost users have their meters connected to a RSMB (Really Small
@@ -64,6 +70,8 @@ class CurrentCostMQTTConnection():
     #  connection
     # 
     def EstablishConnection(self, gui, dialog, dlgend, ipaddr, topicString):
+        global trc
+        trc.FunctionEntry("currentcostmqtt :: EstablishConnection")
 
         #
         # try and make the connection to the Broker
@@ -77,7 +85,9 @@ class CurrentCostMQTTConnection():
             dialog.Update(2, "Connecting to the message broker")
             connection.connect()
         except ConnectFailedException, exception:
+            trc.Error("Unable to connect (" + str(exception) + ")")
             dialog.Update(dlgend, "Unable to connect (" + str(exception) + ")")
+            trc.FunctionExit("currentcostmqtt :: EstablishConnection")
             return False
 
         dialog.Update(3, "Connected to message broker")
@@ -94,9 +104,12 @@ class CurrentCostMQTTConnection():
             subscriber.subscribe()
             dialog.Update(5, "Subscribed to history feed")
         except SubscribeFailedException, exception:
+            trc.Error("Unable to subscribe to topic (" + str(exception) + ")")
             dialog.Update(dlgend, "Unable to subscribe to topic (" + str(exception) + ")")
+            trc.FunctionExit("currentcostmqtt :: EstablishConnection")
             return False
 
+        trc.FunctionExit("currentcostmqtt :: EstablishConnection")
         return True
 
 
