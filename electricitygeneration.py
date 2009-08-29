@@ -120,11 +120,8 @@ class CurrentCostElectricityGeneration():
                   'INTIRL'   : (self.energyMix['INTIRL'] / 100) * reading, 
                   'UNKNOWN'  : (self.energyMix['UNKNOWN'] / 100) * reading }
         return split
-        
 
-    def positive_only(self, sorted_streams, stream_bounds):
-        return np.min(stream_bounds[:,0,:],axis=0)
-        
+
     def stacked_graph(self, timeset, graphdata, colormap):
         global trc
         trc.FunctionEntry("stacked_graph")
@@ -186,8 +183,8 @@ class CurrentCostElectricityGeneration():
                 
         stream_bounds = np.array(stream_bounds)
         
-        baseline = self.positive_only(sorted_streams, stream_bounds)
-        
+        baseline = np.min(stream_bounds[:,0,:],axis=0)
+
         colors = np.linspace(0, 1, streams.shape[1])
         
         labels = [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
@@ -230,5 +227,3 @@ class GridGenerationUpdateThread(Thread):
             self.sleeper.acquire()
             self.sleeper.wait(180)
             self.sleeper.release()
-        
-
