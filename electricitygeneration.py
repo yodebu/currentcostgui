@@ -154,33 +154,33 @@ class CurrentCostElectricityGeneration():
             UNKNOWN.append(ccread['UNKNOWN'])
         
         streams = np.asarray([ CCGT,   OCGT,   OIL,   COAL,   NUCLEAR,   WIND,   PS,   NPSHYD,   OTHER,   INTFR,   INTIRL,   UNKNOWN ])
-        labels  = [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
+        labels  =            [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
 
         numentries = len(timeset)
         for i in range(numentries - 1, -1, -1):
             timeset.append(timeset[i])
 
-        t = np.arange(streams.shape[1])
-        
-        stream_bounds = [ np.vstack((np.zeros(streams.shape[1]), 
-                                    streams[0])),
-                          np.vstack((-streams[1], 
-                                    (np.zeros(streams.shape[1])))) ]
-    
-        side = -1
-        for stream in streams[2:]:
-            side *= -1
-            if side == 1:
-                stream_bounds.append(np.vstack((stream_bounds[-2][1], 
-                                                stream_bounds[-2][1] + stream)))
-            else:
-                stream_bounds.append(np.vstack((stream_bounds[-2][0] - stream, 
-                                                stream_bounds[-2][0])))
-                
-        stream_bounds = np.array(stream_bounds)        
-        baseline      = np.min(stream_bounds[:,0,:], axis=0)
+        zeroline         = np.zeros(numentries)
+        firststream      = streams[0]
+        secondstream     = -streams[1]
+        remainingstreams = streams[2:]
 
-        colors   = np.linspace(0, 1, streams.shape[1])
+        lowerbounds = np.vstack( (zeroline, firststream)  )
+        nextbounds  = np.vstack( (secondstream, zeroline) )
+
+        stream_bounds = [ lowerbounds, nextbounds ]
+
+        for stream in remainingstreams:
+            prevstream = stream_bounds[-2][1]
+            nextstream = prevstream + stream
+
+            nextbounds = np.vstack( (prevstream, nextstream) )
+
+            stream_bounds.append(nextbounds)
+
+        stream_bounds = np.array(stream_bounds)
+
+        baseline      = np.min(stream_bounds[:,0,:], axis=0)
 
         for i in range(len(stream_bounds)):
             bound = stream_bounds[i]
