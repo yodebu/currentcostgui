@@ -28,6 +28,7 @@ The data is shown as a stacked graph, with horizontal bands of colour showing ho
   # When prompted, click on 'Yes' to say that you do want the app to download information about the "energy mix" from the Internet [http://currentcostgui.googlecode.com/files/cc_gen_q.png]
   # Click on 'Show live data' --> 'National electricity generation' to display the stacked graph
 
-Note:
+==Notes:==
   * This will show the generation sources of live electricity usage up until this point. Clicking on 'Show live data' --> 'National electricity generation' will redraw the graph with the latest live usage data
   * If you answered 'No', to prevent the app from downloading usage information, the graph will show the live data with everything from 'UNKNOWN'. [http://currentcostgui.googlecode.com/files/cc_gen_unknown.png]
+  * If you change your mind, stop and start the live data graph so that the app asks you the question again. You can do this as often as you like. The periods where you answered 'No' will just be shown as 'UNKNOWN' [http://currentcostgui.googlecode.com/files/cc_gen_stopstart.png]
