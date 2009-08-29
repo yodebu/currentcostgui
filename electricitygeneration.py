@@ -153,26 +153,22 @@ class CurrentCostElectricityGeneration():
             INTIRL.append(ccread['INTIRL'])
             UNKNOWN.append(ccread['UNKNOWN'])
         
-        streams = [ CCGT, OCGT, OIL, COAL, NUCLEAR, WIND, PS, NPSHYD, OTHER, INTFR, INTIRL, UNKNOWN ]
+        streams = np.asarray([ CCGT,   OCGT,   OIL,   COAL,   NUCLEAR,   WIND,   PS,   NPSHYD,   OTHER,   INTFR,   INTIRL,   UNKNOWN ])
+        labels  = [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
 
         numentries = len(timeset)
         for i in range(numentries - 1, -1, -1):
             timeset.append(timeset[i])
 
-        onset_times    = [np.where(np.abs(stream)>0)[0][0] for stream in streams]
-        order          = np.argsort(onset_times)
-        streams        = np.asarray(streams)
-        sorted_streams = streams[order]
-        
         t = np.arange(streams.shape[1])
         
         stream_bounds = [ np.vstack((np.zeros(streams.shape[1]), 
-                                    sorted_streams[0])),
-                          np.vstack((-sorted_streams[1], 
+                                    streams[0])),
+                          np.vstack((-streams[1], 
                                     (np.zeros(streams.shape[1])))) ]
     
         side = -1
-        for stream in sorted_streams[2:]:
+        for stream in streams[2:]:
             side *= -1
             if side == 1:
                 stream_bounds.append(np.vstack((stream_bounds[-2][1], 
@@ -181,18 +177,16 @@ class CurrentCostElectricityGeneration():
                 stream_bounds.append(np.vstack((stream_bounds[-2][0] - stream, 
                                                 stream_bounds[-2][0])))
                 
-        stream_bounds = np.array(stream_bounds)
-        
-        baseline = np.min(stream_bounds[:,0,:],axis=0)
+        stream_bounds = np.array(stream_bounds)        
+        baseline      = np.min(stream_bounds[:,0,:], axis=0)
 
-        colors = np.linspace(0, 1, streams.shape[1])
-        
-        labels = [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
-        for i in xrange(len(stream_bounds)):
+        colors   = np.linspace(0, 1, streams.shape[1])
+
+        for i in range(len(stream_bounds)):
             bound = stream_bounds[i]
             self.livegraph.fill(timeset, 
-                                np.hstack((bound[0] - baseline, 
-                                           (bound[1]-baseline)[::-1])), 
+                                np.hstack(( bound[0] - baseline, 
+                                            (bound[1]-baseline)[::-1] )), 
                                 facecolor = colormap[i], 
                                 linewidth = 0.1,
                                 edgecolor = 'black', 
