@@ -94,6 +94,7 @@ class CurrentCostElectricityGeneration():
         self.livegraph = targetPage
         self.livegraph.set_ylabel('kW')
         self.livegraph.grid(True)
+        self.livegraph.set_title('Where did your electricity come from?')
         self.livegraph.set_autoscale_on = False
         colormap = [ '#0000FF', '#00FF00', '#FF0000', '#00FFFF', '#2277AA', '#9911BB', '#FFFF00', '#FF00FF', '#550011', '#110066', '#CCCCCC', '#F0F0F0' ]
         self.stacked_graph(dates, data, colormap)
@@ -121,14 +122,13 @@ class CurrentCostElectricityGeneration():
         return split
         
 
-    def pos_only(self, sorted_streams, stream_bounds):
-        # Lumps will only be positive
-        lb, ub = np.min(stream_bounds[:,0,:],axis=0), np.max(stream_bounds[:,1,:],axis=0)
-        return lb
+    def positive_only(self, sorted_streams, stream_bounds):
+        return np.min(stream_bounds[:,0,:],axis=0)
         
     def stacked_graph(self, timeset, graphdata, colormap):
         global trc
         trc.FunctionEntry("stacked_graph")
+
         CCGT = []
         OCGT = []
         OIL  = []
@@ -141,6 +141,7 @@ class CurrentCostElectricityGeneration():
         INTFR = [] 
         INTIRL = []
         UNKNOWN = []
+
         for ccread in graphdata:
             CCGT.append(ccread['CCGT'])
             OCGT.append(ccread['OCGT'])
@@ -157,54 +158,48 @@ class CurrentCostElectricityGeneration():
         
         streams = [ CCGT, OCGT, OIL, COAL, NUCLEAR, WIND, PS, NPSHYD, OTHER, INTFR, INTIRL, UNKNOWN ]
 
-        trc.Trace("values: " + str(len(streams)))
-
         numentries = len(timeset)
         for i in range(numentries - 1, -1, -1):
             timeset.append(timeset[i])
 
-        trc.Trace("times:  " + str(len(timeset)))
-
-        # Sort by onset times
-        onset_times = [np.where(np.abs(stream)>0)[0][0] for stream in streams]
-        order = np.argsort(onset_times)
-        streams = np.asarray(streams)
+        onset_times    = [np.where(np.abs(stream)>0)[0][0] for stream in streams]
+        order          = np.argsort(onset_times)
+        streams        = np.asarray(streams)
         sorted_streams = streams[order]
         
         t = np.arange(streams.shape[1])
         
-        # Establish bounds
         stream_bounds = [ np.vstack((np.zeros(streams.shape[1]), 
                                     sorted_streams[0])),
                           np.vstack((-sorted_streams[1], 
-                                    (np.zeros(streams.shape[1]))))]
+                                    (np.zeros(streams.shape[1])))) ]
     
         side = -1
         for stream in sorted_streams[2:]:
             side *= -1
-            if side==1:
-                stream_bounds.append(np.vstack((stream_bounds[-2][1], stream_bounds[-2][1]+stream)))
+            if side == 1:
+                stream_bounds.append(np.vstack((stream_bounds[-2][1], 
+                                                stream_bounds[-2][1] + stream)))
             else:
-                stream_bounds.append(np.vstack((stream_bounds[-2][0]-stream, stream_bounds[-2][0])))
+                stream_bounds.append(np.vstack((stream_bounds[-2][0] - stream, 
+                                                stream_bounds[-2][0])))
                 
         stream_bounds = np.array(stream_bounds)
         
-        # Compute baseline
-        baseline = self.pos_only(sorted_streams, stream_bounds)
+        baseline = self.positive_only(sorted_streams, stream_bounds)
         
-        # Choose colors
         colors = np.linspace(0, 1, streams.shape[1])
         
-        # Plot    
         labels = [ "CCGT", "OCGT", "OIL", "COAL", "NUCLEAR", "WIND", "PS", "NPSHYD", "OTHER", "INTFR", "INTIRL", "UNKNOWN" ]
         for i in xrange(len(stream_bounds)):
             bound = stream_bounds[i]
             self.livegraph.fill(timeset, 
-                                np.hstack((bound[0]-baseline, (bound[1]-baseline)[::-1])), 
-                                facecolor=colormap[i], 
-                                linewidth=0.1,
-                                edgecolor='black', 
-                                label=labels[i])
+                                np.hstack((bound[0] - baseline, 
+                                           (bound[1]-baseline)[::-1])), 
+                                facecolor = colormap[i], 
+                                linewidth = 0.1,
+                                edgecolor = 'black', 
+                                label     = labels[i])
 
         trc.FunctionExit("stacked_graph")
 
