@@ -44,9 +44,6 @@ class CurrentCostElectricityGeneration():
 
     livegraph = None
 
-    # TODO - should initialise this with average values
-    #  in case the data isn't downloaded in time? 
-    #  (could initialise it with a set of 0, and a single 100% UNKNOWN)
     energyMix = { 'CCGT'     : 0.0000000000000000000000000001,
                   'OCGT'     : 0.0000000000000000000000000001,
                   'OIL'      : 0.0000000000000000000000000001,
