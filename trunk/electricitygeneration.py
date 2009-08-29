@@ -170,27 +170,31 @@ class CurrentCostElectricityGeneration():
 
         stream_bounds = [ lowerbounds, nextbounds ]
 
+        side = -1
         for stream in remainingstreams:
-            prevstream = stream_bounds[-2][1]
-            nextstream = prevstream + stream
-
-            nextbounds = np.vstack( (prevstream, nextstream) )
-
+            side *= -1
+            if side == 1:
+                prevstream = stream_bounds[-2][1]
+                nextstream = prevstream + stream
+                nextbounds = np.vstack( (prevstream, nextstream) )
+            else:
+                prevstream = stream_bounds[-2][0]
+                nextstream = prevstream - stream
+                nextbounds = np.vstack( (nextstream, prevstream) )
             stream_bounds.append(nextbounds)
 
         stream_bounds = np.array(stream_bounds)
-
         baseline      = np.min(stream_bounds[:,0,:], axis=0)
 
         for i in range(len(stream_bounds)):
             bound = stream_bounds[i]
-            self.livegraph.fill(timeset, 
-                                np.hstack(( bound[0] - baseline, 
-                                            (bound[1]-baseline)[::-1] )), 
+            xvalues = timeset
+            yvalues = np.hstack(( bound[0] - baseline, (bound[1] - baseline)[::-1] ))
+            self.livegraph.fill(xvalues, yvalues, 
+                                label     = labels[i],
                                 facecolor = colormap[i], 
-                                linewidth = 0.1,
-                                edgecolor = 'black', 
-                                label     = labels[i])
+                                edgecolor = 'black',
+                                linewidth = 0.1)
 
         trc.FunctionExit("stacked_graph")
 
