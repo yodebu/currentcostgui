@@ -94,7 +94,7 @@ class CurrentCostConnection:
             trc.Trace("SerialException - failed to connect")
             trc.Trace(str(msg))
             self.connerr = msg
-        except:
+        except Exception, msg:
             # we won't report a failure yet - as we haven't attempted a CC128
             # connection yet
             trc.Trace("Exception - failed to connect")
@@ -119,7 +119,7 @@ class CurrentCostConnection:
             trc.Trace("SerialException - failed to connect")
             trc.Trace(str(msg))
             self.connerr = msg
-        except:
+        except Exception, msg:
             # we won't report a failure yet 
             trc.Trace("Exception - failed to connect")
             trc.Trace(str(msg))
