@@ -76,7 +76,8 @@ class CurrentCostSerialLiveConnection():
                     trc.Trace("reading from live XML: " + str(ccreading))
                     if ccreading >= 0:
                         guihandle.updateGraph(ccreading)
-                except err:
+                        self.numberOfErrors = 0
+                except Exception, err:
                     trc.Trace("error encountered parsing XML: " + str(err))
                     # Exiting on a single garbled string from the 
                     #  serial port is a bit extreme - it isn't unusual 
