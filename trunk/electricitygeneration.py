@@ -102,7 +102,7 @@ class CurrentCostElectricityGeneration():
             label.set_rotation(90)
         self.livegraph.xaxis.set_major_formatter(formatter)
         self.livegraph.xaxis.set_minor_formatter(formatter)
-        self.livegraph.legend(loc='upper left')
+        self.livegraph.legend(loc='upper left', fancybox=True, shadow=True, ncol=2)
         trc.FunctionExit("electricitygeneration :: initialiseGraph")
     
 

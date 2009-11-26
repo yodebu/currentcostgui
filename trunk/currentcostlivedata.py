@@ -25,8 +25,9 @@ import wx
 import csv
 import datetime
 
-from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter
+from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter, num2date
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
+from matplotlib.widgets import SpanSelector
 from threading import Thread, Lock
 
 from currentcostcomlive    import CurrentCostSerialLiveConnection
@@ -37,6 +38,20 @@ from tracer                import CurrentCostTracer
 
 # this class provides logging and diagnostics
 trc = CurrentCostTracer()
+
+
+ZERO = datetime.timedelta(0)
+HOUR = datetime.timedelta(hours=1)
+
+class UTC(datetime.tzinfo):
+    def utcoffset(self, dt):
+        return ZERO
+    def tzname(self, dt):
+        return "UTC"
+    def dst(self, dt):
+        return ZERO
+
+utc = UTC()
 
 #
 # Displays a graph showing live CurrentCost data. 
@@ -111,6 +126,8 @@ class CurrentCostLiveData():
     #  at once, we need a thread lock
     lock = Lock()
 
+    # if a modal dialog is open we should stop redrawing graphs
+    dlgOpen = False
 
 
     def ExportLiveData(self, filepath):
@@ -134,7 +151,12 @@ class CurrentCostLiveData():
     # 
     def redrawGraph(self):
         global trc
-        trc.FunctionEntry("currentcostlivedata :: redrawGraph")        
+        trc.FunctionEntry("currentcostlivedata :: redrawGraph")
+
+        if self.dlgOpen:
+            trc.Trace("dialog is open")
+            trc.FunctionExit("currentcostlivedata :: redrawGraph")
+            return
 
         self.lock.acquire()
 
@@ -335,7 +357,7 @@ class CurrentCostLiveData():
     #  the new reading is appended to the set, and the graph is refreshed
     # 
     def updateGraph(self, ccreading):
-        global trc
+        global trc, utc
         trc.FunctionEntry("currentcostlivedata :: updateGraph")
 
         trc.Trace("new data: " + str(ccreading))
@@ -343,7 +365,7 @@ class CurrentCostLiveData():
         if ccreading > 0:
             # store the new reading
             try:
-                self.ccdates.append(datetime.datetime.now())
+                self.ccdates.append(datetime.datetime.now(utc))
                 self.ccreadings.append(ccreading)
                 self.ccsplitreadings.append(self.genClient.splitBySource(ccreading))
                 trc.Trace("stored reading")
@@ -418,6 +440,11 @@ class CurrentCostLiveData():
             backgroundThread.start()
         else:
             trc.Error("unsupported connection type : " + str(self.connectionType))
+
+
+        trc.Trace("currentcostlivedata :: creating span selector")
+        span = SpanSelector(self.livegraph, self.onselect, 'horizontal', useblit=True,
+                            rectprops=dict(alpha=0.5, facecolor='red'))
 
         trc.FunctionExit("currentcostlivedata :: connect")
 
@@ -656,6 +683,73 @@ class CurrentCostLiveData():
                                        self.stddatefmtter)
         trc.FunctionExit("prepareElectricitySourceGraph")
 
+
+
+    #
+    # calculate how much electricity was used between the span of the graph
+    #  selected by the user
+    # 
+    # xmin,xmax identify the x values of the range in the graph span
+    # 
+    def onselect(self, xmin, xmax):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: onselect")
+        trc.Trace("xmin : " + repr(xmin) + ", xmax : " + repr(xmax))
+        datelo = num2date(xmin)
+        datehi = num2date(xmax)
+        dateloReading = None
+        datehiReading = None
+
+        onesecond = 1.0 / 3600.0
+        totalUsage = 0.0
+
+        for idx, nextReading in enumerate(self.ccdates):
+            if nextReading < datelo:
+                dateloReading = idx
+                delta = self.ccdates[idx + 1] - self.ccdates[idx]
+                trc.Trace("A : " + repr(self.ccreadings[idx]) + " for " + repr(delta.seconds) + " seconds")
+                timeInHours = delta.seconds * onesecond
+                kwhUsage = timeInHours * self.ccreadings[idx]
+                trc.Trace("    " + repr(kwhUsage))
+                totalUsage = kwhUsage
+            elif nextReading < datehi:
+                datehiReading = idx
+                delta = self.ccdates[idx + 1] - self.ccdates[idx]
+                trc.Trace("B : " + repr(self.ccreadings[idx]) + " for " + repr(delta.seconds) + " seconds")
+                timeInHours = delta.seconds * onesecond
+                kwhUsage = timeInHours * self.ccreadings[idx]
+                trc.Trace("    " + repr(kwhUsage))
+                totalUsage += kwhUsage
+            else:
+                break
+
+        datehiReading += 1
+        
+        if datehiReading >= len(self.ccdates):
+            datehiReading = len(self.ccdates) - 1
+                            
+        trc.Trace("onselect : " + repr(datelo) + " -> " + repr(datehi))
+        trc.Trace("closest matches : " + repr(self.ccdates[dateloReading]) + " -> " + repr(self.ccdates[datehiReading]))
+
+        trc.Trace(repr(dateloReading) + " | " + repr(datehiReading))
+        
+        numUnits = "%.5f" % totalUsage
+        # TODO - remove hard-coding of 11p per unit
+        costUnits = "%.3f" % (11.0 * totalUsage)
+
+        self.dlgOpen = True
+        nDlg = wx.MessageDialog(self.guicallback, 
+                                "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
+                                " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
+                                " you used " + numUnits + " units of electricity \n" + 
+                                " which cost you approximately " + costUnits + "p", 
+                                "CurrentCost", 
+                                style=(wx.OK | wx.ICON_INFORMATION))
+        nDlg.ShowModal()
+        nDlg.Destroy()
+        self.dlgOpen = False
+
+        trc.FunctionExit("currentcostlivedata :: onselect")
 
 
 # a background thread used to create an MQTT connection
