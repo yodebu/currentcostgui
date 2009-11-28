@@ -26,6 +26,7 @@ import sys
 import time
 import string
 import wx
+from datetime import datetime
 from string import atoi, atof
 
 from mqttClient import *
@@ -80,7 +81,8 @@ class CurrentCostMQTTConnection():
         connection = None
         try:
             dialog.Update(1, "Defining a connection to the message broker")
-            connection = MqttConnection("python-currentcostgui", ipaddr)
+            connection = MqttConnection("pyccgui-" + datetime.now().strftime("%m%d%H%M%S"), 
+                                        ipaddr)
 
             dialog.Update(2, "Connecting to the message broker")
             connection.connect()
