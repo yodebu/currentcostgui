@@ -1,0 +1,7 @@
+#summary Measuring energy usage between any start and end time
+
+Adding the ability to dynamically select a chunk of a graph showing real-time home energy usage.
+
+Click-and-drag to highlight a span of the graph, and a Python script calculates the area under that part of the curve - using this to calculate how much energy you used during this time.
+
+<wiki:video url="http://www.youtube.com/watch?v=z9MBMGPi2qw" width=640 height=505 hd=1/>
