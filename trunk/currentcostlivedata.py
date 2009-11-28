@@ -129,6 +129,8 @@ class CurrentCostLiveData():
     # if a modal dialog is open we should stop redrawing graphs
     dlgOpen = False
 
+    # handle to db used to persist data
+    appDatabase = None
 
     def ExportLiveData(self, filepath):
         f = open(filepath, 'wt')
@@ -391,9 +393,11 @@ class CurrentCostLiveData():
     #
     # called to create a connection to the CurrentCost meter
     # 
-    def connect(self, guihandle, connType, graphaxes, ipaddr, topic, com):
+    def connect(self, guihandle, connType, ccdb, graphaxes, ipaddr, topic, com):
         global trc
         trc.FunctionEntry("currentcostlivedata :: connect")
+
+        self.appDatabase = ccdb
 
         # start background thread
         qDlg = wx.MessageDialog(guihandle, 
@@ -695,6 +699,7 @@ class CurrentCostLiveData():
         global trc
         trc.FunctionEntry("currentcostlivedata :: onselect")
         trc.Trace("xmin : " + repr(xmin) + ", xmax : " + repr(xmax))
+
         datelo = num2date(xmin)
         datehi = num2date(xmax)
         dateloReading = None
@@ -703,6 +708,7 @@ class CurrentCostLiveData():
         onesecond = 1.0 / 3600.0
         totalUsage = 0.0
 
+        # note: it's safe to assume that self.ccdates is already sorted
         for idx, nextReading in enumerate(self.ccdates):
             if nextReading < datelo:
                 dateloReading = idx
@@ -723,31 +729,65 @@ class CurrentCostLiveData():
             else:
                 break
 
-        datehiReading += 1
-        
-        if datehiReading >= len(self.ccdates):
-            datehiReading = len(self.ccdates) - 1
-                            
-        trc.Trace("onselect : " + repr(datelo) + " -> " + repr(datehi))
-        trc.Trace("closest matches : " + repr(self.ccdates[dateloReading]) + " -> " + repr(self.ccdates[datehiReading]))
+        trc.Trace("dateloReading : " + repr(dateloReading))
+        trc.Trace("datehiReading : " + repr(datehiReading))
 
-        trc.Trace(repr(dateloReading) + " | " + repr(datehiReading))
-        
-        numUnits = "%.5f" % totalUsage
-        # TODO - remove hard-coding of 11p per unit
-        costUnits = "%.3f" % (11.0 * totalUsage)
+        if dateloReading is None:
+            dateloReading = 0
 
-        self.dlgOpen = True
-        nDlg = wx.MessageDialog(self.guicallback, 
-                                "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
-                                " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
-                                " you used " + numUnits + " units of electricity \n" + 
-                                " which cost you approximately " + costUnits + "p", 
-                                "CurrentCost", 
-                                style=(wx.OK | wx.ICON_INFORMATION))
-        nDlg.ShowModal()
-        nDlg.Destroy()
-        self.dlgOpen = False
+        if datehiReading is None:
+            self.dlgOpen = True
+            nDlg = wx.MessageDialog(self.guicallback, 
+                                    "Between " + datelo.strftime("%d/%m/%y %H:%M.%S") + 
+                                    " and " + datehi.strftime("%d/%m/%y %H:%M.%S") + "\n" + 
+                                    " you used 0 units of electricity \n" + 
+                                    " which cost you 0p", 
+                                    "CurrentCost", 
+                                    style=(wx.OK | wx.ICON_INFORMATION))
+            nDlg.ShowModal()
+            nDlg.Destroy()
+            self.dlgOpen = False
+        else:
+            datehiReading += 1
+            
+            if datehiReading >= len(self.ccdates):
+                datehiReading = len(self.ccdates) - 1
+                                
+            trc.Trace("onselect : " + repr(datelo) + " -> " + repr(datehi))
+            trc.Trace("closest matches : " + repr(self.ccdates[dateloReading]) + " -> " + repr(self.ccdates[datehiReading]))
+    
+            trc.Trace(repr(dateloReading) + " | " + repr(datehiReading))
+            
+            numUnits = "%.5f" % totalUsage
+    
+            # 
+            costPerUnit = self.appDatabase.RetrieveSetting("kwhcost")
+            if costPerUnit is None:
+                self.dlgOpen = True
+                nDlg = wx.MessageDialog(self.guicallback, 
+                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
+                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
+                                        " you used " + numUnits + " units of electricity", 
+                                        "CurrentCost", 
+                                        style=(wx.OK | wx.ICON_INFORMATION))
+                nDlg.ShowModal()
+                nDlg.Destroy()
+                self.dlgOpen = False
+            else:
+                costUnits = "%.3f" % (float(costPerUnit) * totalUsage)
+                trc.Trace("cost of a unit : " + repr(float(costPerUnit)))
+        
+                self.dlgOpen = True
+                nDlg = wx.MessageDialog(self.guicallback, 
+                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
+                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
+                                        " you used " + numUnits + " units of electricity \n" + 
+                                        " which cost you approximately " + costUnits + "p", 
+                                        "CurrentCost", 
+                                        style=(wx.OK | wx.ICON_INFORMATION))
+                nDlg.ShowModal()
+                nDlg.Destroy()
+                self.dlgOpen = False
 
         trc.FunctionExit("currentcostlivedata :: onselect")
 

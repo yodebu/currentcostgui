@@ -451,7 +451,7 @@ class MyFrame(wx.Frame):
         info.SetName('CurrentCost')
         info.Developers = ['Dale Lane']
         info.Description = "Draws interactive graphs using the data from a CurrentCost electricity meter"
-        info.Version = "0.9.28"
+        info.Version = "0.9.29"
         info.WebSite = ("http://code.google.com/p/currentcostgui/", "http://code.google.com/p/currentcostgui/")
         wx.AboutBox(info)
 
@@ -507,7 +507,7 @@ class MyFrame(wx.Frame):
                                        style=(wx.OK | wx.ICON_EXCLAMATION))
             result = confdlg.ShowModal()        
             confdlg.Destroy()
-        elif latestversion != "0.9.28":
+        elif latestversion != "0.9.29":
             confdlg = wx.MessageDialog(self,
                                        "A newer version of this application (" + latestversion + ") is available.\n\n"
                                        "Download now?",
@@ -1303,7 +1303,7 @@ class MyFrame(wx.Frame):
 
         if reuseconnection == True:
             # create a live data connection
-            livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
+            livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, ccdb,
                                   self.liveaxes, 
                                   None, None, 
                                   myserialconn)
@@ -1360,7 +1360,7 @@ class MyFrame(wx.Frame):
                     return False
     
                 # create a new connection
-                livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, 
+                livedataagent.connect(self, livedataagent.CONNECTION_SERIAL, ccdb,
                                       self.liveaxes, 
                                       None, None, 
                                       myserialconn)
@@ -1443,7 +1443,7 @@ class MyFrame(wx.Frame):
             dlg.Destroy()
 
             # create a new connection
-            livedataagent.connect(self, livedataagent.CONNECTION_MQTT, 
+            livedataagent.connect(self, livedataagent.CONNECTION_MQTT, ccdb,
                                   self.liveaxes, 
                                   ipaddr, topicString, 
                                   None)                
