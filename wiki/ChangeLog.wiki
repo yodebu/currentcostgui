@@ -2,6 +2,7 @@
 
 See [Features] for a description of features added
 
+||0.9.29 || Added support for measuring cost from the live data graph ||
 ||0.9.28 || Added support for displaying live data divided into source of electricity ||
 ||0.9.27 || Improved support for managing connections to CC128 meters ||
 ||0.9.26 || Bug fixes ||
