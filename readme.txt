@@ -22,6 +22,7 @@
 #         Adding webservice showing all users http://dalelane.co.uk/blog/?p=434
 #         Updating the parser                 http://dalelane.co.uk/blog/?p=456
 #         Graphing National Grid data         http://dalelane.co.uk/blog/?p=469
+#         Measuring costs from live graph     http://dalelane.co.uk/blog/?p=1142
 # 
 #     Providing support
 #         http://getsatisfaction.com/dalelane/products/dalelane_currentcost_gui
