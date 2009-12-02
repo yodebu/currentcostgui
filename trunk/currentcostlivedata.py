@@ -680,7 +680,7 @@ class CurrentCostLiveData():
     def prepareElectricitySourceGraph(self, targetTab):
         global trc
         trc.FunctionEntry("prepareElectricitySourceGraph")
-        # TODO - protect against emptry data
+        # TODO - protect against empty data
         self.genClient.initialiseGraph(list(self.ccdates), 
                                        list(self.ccsplitreadings),
                                        targetTab, 

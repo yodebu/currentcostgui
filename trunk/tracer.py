@@ -21,6 +21,12 @@
 #
 
 import logging
+import numpy
+import scipy
+import matplotlib
+import platform
+import wx
+from pysqlite2 import dbapi2 as sqlite
 
 from time import strftime
 
@@ -60,6 +66,12 @@ class CurrentCostTracer():
     
             logging.info("CurrentCost software - v 0.9.29")
             logging.info("-------------------------------")
+            logging.info("python     : version " + repr(platform.python_version()))
+            logging.info("numpy      : version " + repr(numpy.version.version))
+            logging.info("scipy      : version " + repr(scipy.version.version))
+            logging.info("matplotlib : version " + repr(matplotlib.__version__))
+            logging.info("wxpython   : version " + repr(wx.version()))
+            logging.info("sqlite     : version " + repr(sqlite.version))
 
 
     def Trace(self, debuginfo):
