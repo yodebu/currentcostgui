@@ -219,7 +219,13 @@ class GridGenerationUpdateThread(Thread):
     def run(self):
         while self.disconnect == False:
             emxml = self.ngdata.DownloadRealtimeXML()
-            self.elecgen.energyMix = self.ngdata.ParseRealtimeXML(emxml)
+            try: 
+                self.elecgen.energyMix = self.ngdata.ParseRealtimeXML(emxml)
+            except Exception, exc:
+                trc.Error("failed to parse realtime xml")
+                trc.Error(str(emxml))
+                trc.Error(repr(exc))
+                trc.Error(repr(exc.message))
             # go to sleep for a while - the realtime data doesn't update very
             #  often, so no need to download it constantly!
             self.sleeper.acquire()

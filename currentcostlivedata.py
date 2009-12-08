@@ -24,6 +24,8 @@
 import wx
 import csv
 import datetime
+import time
+import pytz
 
 from matplotlib.dates import DayLocator, HourLocator, MinuteLocator, DateFormatter, num2date
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
@@ -40,18 +42,18 @@ from tracer                import CurrentCostTracer
 trc = CurrentCostTracer()
 
 
-ZERO = datetime.timedelta(0)
-HOUR = datetime.timedelta(hours=1)
+#ZERO = datetime.timedelta(0)
+#HOUR = datetime.timedelta(hours=1)##
 
-class UTC(datetime.tzinfo):
-    def utcoffset(self, dt):
-        return ZERO
-    def tzname(self, dt):
-        return "UTC"
-    def dst(self, dt):
-        return ZERO
+#class UTC(datetime.tzinfo):
+#    def utcoffset(self, dt):
+#        return ZERO
+#    def tzname(self, dt):
+#        return "UTC"
+#    def dst(self, dt):
+#        return ZERO#
 
-utc = UTC()
+#utc = UTC()
 
 #
 # Displays a graph showing live CurrentCost data. 
@@ -160,6 +162,10 @@ class CurrentCostLiveData():
             trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return
 
+        trc.Trace(str(len(self.ccdates)) + " dates and " + 
+                  str(len(self.ccreadings)) + " data points")
+
+        trc.Trace("aquiring lock")
         self.lock.acquire()
 
         #
@@ -168,23 +174,32 @@ class CurrentCostLiveData():
         # 
         if len(self.ccdates) > 0:
             try:
+                trc.Trace("plotting live data")
                 self.livegraph.plot_date(self.ccdates, 
                                          self.ccreadings,
                                          'r-')
             except Exception, e:
+                trc.Trace("failed to plot data on live graph")
+                trc.Trace(str(e))
+                trc.Trace(str(e.message))
                 if self.closing == False:
                     trc.Error('Failed to plot data on livegraph')
                     trc.Error(str(e))
                     trc.Error(str(e.message))
                     trc.Error("have " + str(len(self.ccdates)) + " dates and " + 
                               str(len(self.ccreadings)) + " data points")
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
+        else:
+            trc.Trace("no dates to plot")
+
         
         if self.livegraphNGDemand != None and len(self.ngdatadates) > 0:
             try:
                 # update the graph
+                trc.Trace("plotting National Grid demand data")
                 self.livegraphNGDemand.plot_date(self.ngdatadates, 
                                                  self.ngdemandreadings,
                                                  'b-')
@@ -192,6 +207,7 @@ class CurrentCostLiveData():
                 trc.Error('DEBUG: error - failed to plot demand data on national grid graph')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
@@ -199,13 +215,16 @@ class CurrentCostLiveData():
         if self.livegraphNGFrequency != None and len(self.ngdatadates) > 0:
             try:
                 # update the graph
+                trc.Trace("plotting National Grid frequency data")
                 self.livegraphNGFrequency.plot_date(self.ngdatadates, 
                                                     self.ngfreqreadings,
                                                     'b-')
+
                 # add a 'zero' (e.g. 50Hz) line to the graph
                 # I tried to do this using axhline but it threw some weird 
                 #  ordinal must be >= 1 errors when I tried doing any additional
                 #  plots. This is a fairly hacky workaround
+                trc.Trace("plotting zero line")
                 self.livegraphNGFrequency.plot_date(self.ngdatadates, 
                                                     self.ngfreqzeroline,
                                                     'g-')
@@ -213,6 +232,7 @@ class CurrentCostLiveData():
                 trc.Error('DEBUG: error - failed to plot frequency data on national grid graph')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
@@ -227,6 +247,7 @@ class CurrentCostLiveData():
         # 
         #    so we scale all x-axes manually
         # 
+        trc.Trace("disabling auto-scaling")
         if len(self.ccdates) > 0:
             self.livegraph.set_autoscale_on = False
         if self.livegraphNGDemand != None:
@@ -240,34 +261,40 @@ class CurrentCostLiveData():
         #    makes the timestamps fit better when rendered vertically
         # 
         try:
+            trc.Trace("rotating labels on x-axis")
             for label in self.livegraph.get_xticklabels():
                 label.set_rotation(90)
         except Exception, e:
             trc.Error('DEBUG: error - failed to rotate axis labels on live graph')
             trc.Error(str(e))
             trc.Error(str(e.message))
+            trc.Trace("releasing lock")
             self.lock.release()
             trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
         if self.livegraphNGDemand != None:
             try:
+                trc.Trace("rotating labels on x-axis for National Grid demand data")
                 for label in self.livegraphNGDemand.get_xticklabels():
                     label.set_rotation(90)
             except Exception, e:
                 trc.Error('DEBUG: error - failed to rotate axis labels on NG demand graph')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         if self.livegraphNGFrequency != None:
             try:
+                trc.Trace("rotating labels on x-axis for National Grid frequency data")
                 for label in self.livegraphNGFrequency.get_xticklabels():
                     label.set_rotation(90)
             except Exception, e:
                 trc.Error('DEBUG: error - failed to rotate axis labels on NG frequency graph')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
@@ -276,7 +303,8 @@ class CurrentCostLiveData():
         # Step 4:
         #   manually zoom all graphs to same scale - keeping x-axes in sync
         # 
-        endtime = datetime.datetime.now()
+        trc.Trace("setting xmin/xmax")
+        endtime = datetime.datetime.now(pytz.utc)
         self.livegraph.set_xlim(xmin=self.starttime, xmax=endtime)
         if self.livegraphNGDemand != None:
             self.livegraphNGDemand.set_xlim(xmin=self.starttime, xmax=endtime)
@@ -293,12 +321,15 @@ class CurrentCostLiveData():
         try:
             # format the dates on the x-axis
             if len(self.ccdates) > 0:
+                trc.Trace("formatting x-axis labels")
                 self.livegraph.xaxis.set_major_formatter(self.stddatefmtter)
                 self.livegraph.xaxis.set_minor_formatter(self.stddatefmtter)
             if self.livegraphNGDemand != None:
+                trc.Trace("formatting x-axis labels for National Grid demand")
                 self.livegraphNGDemand.xaxis.set_major_formatter(self.stddatefmtter)
                 self.livegraphNGDemand.xaxis.set_minor_formatter(self.stddatefmtter)
             if self.livegraphNGFrequency != None:
+                trc.Trace("formatting x-axis labels for National Grid frequency")
                 self.livegraphNGFrequency.xaxis.set_major_formatter(self.stddatefmtter)
                 self.livegraphNGFrequency.xaxis.set_minor_formatter(self.stddatefmtter)
                 self.livegraphNGFrequency.yaxis.set_major_formatter(self.freqfmtter)
@@ -308,6 +339,7 @@ class CurrentCostLiveData():
             trc.Error('DEBUG: error - failed to assign xaxis formatters')
             trc.Error(str(e))
             trc.Error(str(e.message))
+            trc.Trace("releasing lock")
             self.lock.release()
             trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
@@ -317,37 +349,44 @@ class CurrentCostLiveData():
         #   final step - redraw all active graphs
         # 
         try:
+            trc.Trace("redrawing canvas")
             self.livegraph.figure.canvas.draw()
         except Exception, e:
             trc.Error('DEBUG: error - failed to redraw live canvas')
             trc.Error(str(e))
             trc.Error(str(e.message))
+            trc.Trace("releasing lock")
             self.lock.release()
             trc.FunctionExit("currentcostlivedata :: redrawGraph")
             return False
         if self.livegraphNGDemand != None:
             try:
+                trc.Trace("redrawing National Grid demand canvas")
                 self.livegraphNGDemand.figure.canvas.draw()
             except Exception, e:
                 trc.Error('DEBUG: error - failed to redraw NG demand canvas')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         if self.livegraphNGFrequency != None:
             try:
+                trc.Trace("redrawing National Grid frequency canvas")
                 self.livegraphNGFrequency.figure.canvas.draw()
             except Exception, e:
                 trc.Error('DEBUG: error - failed to redraw NG frequency canvas')
                 trc.Error(str(e))
                 trc.Error(str(e.message))
+                trc.Trace("releasing lock")
                 self.lock.release()
                 trc.FunctionExit("currentcostlivedata :: redrawGraph")
                 return False
         
         #
         # graph redraw complete
+        trc.Trace("releasing lock")
         self.lock.release()
         trc.FunctionExit("currentcostlivedata :: redrawGraph")
         return True
@@ -359,15 +398,17 @@ class CurrentCostLiveData():
     #  the new reading is appended to the set, and the graph is refreshed
     # 
     def updateGraph(self, ccreading):
-        global trc, utc
+        global trc
         trc.FunctionEntry("currentcostlivedata :: updateGraph")
 
         trc.Trace("new data: " + str(ccreading))
 
         if ccreading > 0:
             # store the new reading
-            try:
-                self.ccdates.append(datetime.datetime.now(utc))
+            try:                
+                x = datetime.datetime.now(pytz.utc)
+                trc.Trace("timestamp : " + repr(x))
+                self.ccdates.append(x)
                 self.ccreadings.append(ccreading)
                 self.ccsplitreadings.append(self.genClient.splitBySource(ccreading))
                 trc.Trace("stored reading")
@@ -377,6 +418,8 @@ class CurrentCostLiveData():
               
             # redraw the graph with the new reading
             self.redrawGraph()
+        else:
+            trc.Trace("ignoring zero reading")
 
         trc.FunctionExit("currentcostlivedata :: updateGraph")
 
@@ -384,11 +427,16 @@ class CurrentCostLiveData():
     # prepare the graph used to display live CurrentCost data
     # 
     def prepareCurrentcostDataGraph(self, graphaxes):
+        global trc
+        trc.FunctionEntry("currentcostlivedata :: prepareCurrentcostDataGraph")
+        
         # prepare graph for drawing
         self.livegraph = graphaxes
         self.livegraph.set_ylabel('kW')
         self.livegraph.grid(True)
         self.livegraph.set_autoscale_on = False
+
+        trc.FunctionExit("currentcostlivedata :: prepareCurrentcostDataGraph")
 
     #
     # called to create a connection to the CurrentCost meter
@@ -409,7 +457,10 @@ class CurrentCostLiveData():
         dwldResponse = qDlg.ShowModal()
         qDlg.Destroy()
 
+        trc.Trace("user response to National Grid question: " + repr(dwldResponse))
+
         if dwldResponse == wx.ID_YES:
+            trc.Trace("starting background thread for National Grid data")
             self.genClient.startBackgroundThread()
 
         # store globals
@@ -418,11 +469,13 @@ class CurrentCostLiveData():
         self.guicallback = guihandle
 
         # prepare graph for drawing
+        trc.Trace("preparing livegraph cla")
         self.livegraph.cla()
         self.prepareCurrentcostDataGraph(graphaxes)
 
         if self.starttime == None:
-            self.starttime = datetime.datetime.now()
+            trc.Trace("no starttime - setting a starttime now")
+            self.starttime = datetime.datetime.now(pytz.utc)
 
         if self.connectionType == self.CONNECTION_MQTT:
             trc.Trace("connection type: MQTT")
@@ -438,8 +491,10 @@ class CurrentCostLiveData():
             trc.Trace("connection type: serial")
             self.comport = com
 
+            trc.Trace("creating serial connection for live data")
             self.comClient = CurrentCostSerialLiveConnection()
 
+            trc.Trace("creating background thread for CurrentCost data")
             backgroundThread = SerialUpdateThread(self.comClient, com, self)
             backgroundThread.start()
         else:
@@ -505,7 +560,7 @@ class CurrentCostLiveData():
 
         # store the new National Grid data readings
         if ngdemand != None and ngfrequency != None:
-            self.ngdatadates.append(datetime.datetime.now())
+            self.ngdatadates.append(datetime.datetime.now(pytz.utc))
             self.ngdemandreadings.append(ngdemand)
             self.ngfreqreadings.append(ngfrequency)
             self.ngfreqzeroline.append(self.NGFREQ_ZERO)
@@ -535,7 +590,7 @@ class CurrentCostLiveData():
             # if this is a new graph, we need to make a note of the 
             #  far-left x-axis value for zooming purposes
             if self.starttime == None:
-                self.starttime = datetime.datetime.now()
+                self.starttime = datetime.datetime.now(pytz.utc)
 
             # store a handle to the parent graph if required (only if we 
             #  are viewing National Grid data without personal CurrentCost data)
@@ -604,7 +659,7 @@ class CurrentCostLiveData():
             # if this is a new graph, we need to make a note of the 
             #  far-left x-axis value for zooming purposes
             if self.starttime == None:
-                self.starttime = datetime.datetime.now()
+                self.starttime = datetime.datetime.now(pytz.utc)
 
             # store a handle to the parent graph if required (only if we 
             #  are viewing National Grid data without personal CurrentCost data)
@@ -737,38 +792,38 @@ class CurrentCostLiveData():
 
         if datehiReading is None:
             self.dlgOpen = True
-            nDlg = wx.MessageDialog(self.guicallback, 
-                                    "Between " + datelo.strftime("%d/%m/%y %H:%M.%S") + 
-                                    " and " + datehi.strftime("%d/%m/%y %H:%M.%S") + "\n" + 
-                                    " you used 0 units of electricity \n" + 
-                                    " which cost you 0p", 
-                                    "CurrentCost", 
+            nDlg = wx.MessageDialog(self.guicallback,
+                                    "Between " + datelo.strftime("%d/%m/%y %H:%M.%S") +
+                                    " and " + datehi.strftime("%d/%m/%y %H:%M.%S") + "\n" +
+                                    " you used 0 units of electricity \n" +
+                                    " which cost you 0p",
+                                    "CurrentCost",
                                     style=(wx.OK | wx.ICON_INFORMATION))
             nDlg.ShowModal()
             nDlg.Destroy()
             self.dlgOpen = False
         else:
             datehiReading += 1
-            
+
             if datehiReading >= len(self.ccdates):
                 datehiReading = len(self.ccdates) - 1
-                                
+
             trc.Trace("onselect : " + repr(datelo) + " -> " + repr(datehi))
             trc.Trace("closest matches : " + repr(self.ccdates[dateloReading]) + " -> " + repr(self.ccdates[datehiReading]))
-    
+
             trc.Trace(repr(dateloReading) + " | " + repr(datehiReading))
-            
+
             numUnits = "%.5f" % totalUsage
-    
-            # 
+
+            #
             costPerUnit = self.appDatabase.RetrieveSetting("kwhcost")
             if costPerUnit is None:
                 self.dlgOpen = True
-                nDlg = wx.MessageDialog(self.guicallback, 
-                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
-                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
-                                        " you used " + numUnits + " units of electricity", 
-                                        "CurrentCost", 
+                nDlg = wx.MessageDialog(self.guicallback,
+                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") +
+                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" +
+                                        " you used " + numUnits + " units of electricity",
+                                        "CurrentCost",
                                         style=(wx.OK | wx.ICON_INFORMATION))
                 nDlg.ShowModal()
                 nDlg.Destroy()
@@ -776,14 +831,14 @@ class CurrentCostLiveData():
             else:
                 costUnits = "%.3f" % (float(costPerUnit) * totalUsage)
                 trc.Trace("cost of a unit : " + repr(float(costPerUnit)))
-        
+
                 self.dlgOpen = True
-                nDlg = wx.MessageDialog(self.guicallback, 
-                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") + 
-                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" + 
-                                        " you used " + numUnits + " units of electricity \n" + 
-                                        " which cost you approximately " + costUnits + "p", 
-                                        "CurrentCost", 
+                nDlg = wx.MessageDialog(self.guicallback,
+                                        "Between " + self.ccdates[dateloReading].strftime("%d/%m/%y %H:%M.%S") +
+                                        " and " + self.ccdates[datehiReading].strftime("%d/%m/%y %H:%M.%S") + "\n" +
+                                        " you used " + numUnits + " units of electricity \n" +
+                                        " which cost you approximately " + costUnits + "p",
+                                        "CurrentCost",
                                         style=(wx.OK | wx.ICON_INFORMATION))
                 nDlg.ShowModal()
                 nDlg.Destroy()

@@ -64,7 +64,7 @@ class CurrentCostTracer():
             stackDepth = 0
             indentStr  = ""
     
-            logging.info("CurrentCost software - v 0.9.29")
+            logging.info("CurrentCost software - v 0.9.30")
             logging.info("-------------------------------")
             logging.info("python     : version " + repr(platform.python_version()))
             logging.info("numpy      : version " + repr(numpy.version.version))
