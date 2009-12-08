@@ -4,18 +4,17 @@
 = Python =
    Note: This only applies if you download the Python source. If you download the compiled Windows executable, you wont need to get Python separately, or any of the third-party Python modules listed here.
 
-The biggest prerequisite is Python, as this is a Python application. I use Python 2.5, but you can probably use newer versions.
+The biggest prerequisite is Python, as this is a Python application. I use Python 2.6, but you can probably use newer versions.
 
 The app also uses a number of third-party Python modules:
-  * matplotlib  :: http://matplotlib.sourceforge.net/users/installing.html :: I'm using v 0.99.1
-  * numpy :: http://sourceforge.net/project/showfiles.php?group_id=1369&package_id=175103 :: I'm using v 1.3.0
-  * scipy :: http://www.scipy.org/Download :: I'm using v 0.6.0
-  * pyserial :: http://pyserial.wiki.sourceforge.net/pySerial
-  * pysqlite :: http://oss.itsystementwicklung.de/trac/pysqlite/
-  * pywin32  :: http://sourceforge.net/project/showfiles.php?group_id=78018
-  * setuptools :: http://pypi.python.org/pypi/setuptools/
-  * simplejson :: http://pypi.python.org/pypi/simplejson
-  * wxpython  :: http://wxpython.org/download.php
+  * matplotlib
+  * numpy 
+  * scipy 
+  * pyserial
+  * pysqlite
+  * pywin32 
+  * simplejson
+  * wxpython 
 
 Most of these can be installed using easy install
 
@@ -25,6 +24,18 @@ easy_install wxpython
 }}}
 
 Which saves having to manually download and install each of the prereqs. 
+
+This is how I install the pre-requisites for use on my Windows machine (note the order - as some of these are dependent on others):
+
+  * install ActivePython for Windows (including Python Package Manager and the Windows-specific packages) - version 2.6.4.8 from [http://www.activestate.com/activepython/]
+  * install scipy using scipy-0.7.1-win32-superpack-python2.6.exe from [http://sourceforge.net/projects/scipy/files/] 
+  * install numpy using numpy-1.4.0rc1-win32-superpack-python2.6.exe from [http://sourceforge.net/projects/numpy/files/]
+  * install matplotlib using matplotlib-0.99.1.win32-py2.6.exe from [http://sourceforge.net/projects/matplotlib/files/]
+  * install wxPython using wxPython2.8-win32-unicode-2.8.10.1-py26.exe from [http://sourceforge.net/projects/wxpython/files/]
+  * install pysqlite using pysqlite-2.5.6.win32-py2.6.exe from [http://code.google.com/p/pysqlite/downloads/list]
+  * install pyserial using pyserial-2.5-rc1.win32.exe from [http://sourceforge.net/projects/pyserial/files/]
+  * use pypm to install simplejson (2.0.9-1) - using `pypm install simplejson`
+
 ----
 = Serial drivers =
 
