@@ -17,11 +17,13 @@ The app also uses a number of third-party Python modules:
   * wxpython 
 
 Most of these can be installed using easy install
-
 E.g. 
 {{{
 easy_install wxpython
 }}}
+
+Alternatively, some platforms provide a platform-specific way to install the modules, such as on Ubuntu, I use commands such as:
+{{ sudo aptitude install python-serial }}
 
 Which saves having to manually download and install each of the prereqs. 
 
