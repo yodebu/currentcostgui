@@ -23,9 +23,9 @@ easy_install wxpython
 }}}
 
 Alternatively, some platforms provide a platform-specific way to install the modules, such as on Ubuntu, I use commands such as:
-{{ 
+{{{ 
 sudo aptitude install python-serial 
-}}
+}}}
 
 Such approaches saves having to manually download and install each of the prereqs. 
 
