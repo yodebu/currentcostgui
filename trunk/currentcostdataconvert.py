@@ -22,7 +22,6 @@
 #    Any contact about this application is warmly welcomed.
 #
 
-from string import atoi, atof
 import datetime
 
 # this class provides logging and diagnostics
@@ -107,26 +106,26 @@ class CurrentCostDataConverter:
         # months
         for i in range(1, 10):
             key = "m0" + str(i)
-            ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), atoi(hist['mths'][key]))
+            ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), abs(int(hist['mths'][key])))
         for i in range(10, 13):
             key = "m" + str(i)
-            ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), atoi(hist['mths'][key]))
+            ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), abs(int(hist['mths'][key])))
 
         # days
         for i in range(1, 10):
             key = "d0" + str(i)
-            ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  atoi(hist['days'][key]))
+            ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  int(hist['days'][key]))
         for i in range(10, 32):
             key = "d" + str(i)
-            ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  atoi(hist['days'][key]))
+            ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  int(hist['days'][key]))
 
         # hours
         for i in range(2, 9, 2):
             key = "h0" + str(i)
-            ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  atof(hist['hrs'][key]))
+            ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  float(hist['hrs'][key]))
         for i in range(10, 27, 2):
             key = "h" + str(i)
-            ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  atof(hist['hrs'][key]))
+            ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  float(hist['hrs'][key]))
 
         trc.FunctionExit("storeTimedCurrentCostDatav2")
 
@@ -142,34 +141,34 @@ class CurrentCostDataConverter:
         for i in range(1, 10):
             key = "m00" + str(i)
             if key in hist:
-                ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), atof(hist[key]))
+                ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), abs(float(hist[key])))
         for i in range(10, 85):
             key = "m0" + str(i)
             if key in hist:
-                ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), atof(hist[key]))
+                ccdb.StoreMonthData(self.GetOldMonth(reftimestamp, i), abs(float(hist[key])))
 
         # days
         for i in range(1, 10):
             key = "d00" + str(i)
             if key in hist:
-                ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  atof(hist[key]))
+                ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  float(hist[key]))
         for i in range(10, 91):
             key = "d0" + str(i)
             if key in hist:
-                ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  atof(hist[key]))
+                ccdb.StoreDayData(self.GetOldDay(reftimestamp, i),  float(hist[key]))
 
         # hours
         for i in range(2, 9, 2):
             key = "h00" + str(i)
             if key in hist:
-                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  atof(hist[key]))
+                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  float(hist[key]))
         for i in range(10, 99, 2):
             key = "h0" + str(i)
             if key in hist:
-                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  atof(hist[key]))
+                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  float(hist[key]))
         for i in range(100, 747, 2):
             key = "h" + str(i)
             if key in hist:
-                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  atof(hist[key]))
+                ccdb.StoreHourData(self.GetOldHour(reftimestamp, i - 2),  float(hist[key]))
 
         trc.FunctionExit("storeTimedCurrentCostDatavcc128")

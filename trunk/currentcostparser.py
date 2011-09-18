@@ -25,8 +25,6 @@
 import datetime
 import xml.parsers.expat
 
-# this class lets you store your CurrentCost data
-from currentcostdb          import CurrentCostDB
 
 # this class converts relative timestamps into absolute timestamps
 from currentcostdataconvert import CurrentCostDataConverter
@@ -166,13 +164,26 @@ class CurrentCostDataParser:
         self.currentcoststruct = {}
         self.currentpointer = []
 
+        xmldata = xmldata.strip()
+        
+        while xmldata and not xmldata.startswith("<"):
+            trc.Trace("Removing garbage at start of xml data")
+            xmldata = xmldata[1:]
+
+        if not xmldata:
+            trc.Trace("sanity test - XML packet empty")
+            trc.FunctionExit("parseCurrentCostXML")
+            return None
+
         # sanity check before running parser
         if xmldata.startswith('<msg>') == False:
             trc.Trace("sanity test - XML missing opening <msg> tag - aborting")
+            trc.Trace(xmldata)
             trc.FunctionExit("parseCurrentCostXML")
             return None
         if xmldata.endswith('</msg>') == False:
             trc.Trace("sanity test - XML missing closing </msg> tag - aborting")
+            trc.Trace(xmldata)
             trc.FunctionExit("parseCurrentCostXML")
             return None
 
@@ -253,7 +264,7 @@ class CurrentCostDataParser:
                     trc.Trace("found 'hist' in self.currentcoststruct['msg']")
                     self.converter.storeTimedCurrentCostDatav2(today, ccdb, self.currentcoststruct['msg']['hist'])
                     updatesremaining = 0
-            elif self.currentcoststruct['msg']['src'].startswith('CC128-v0.'):                
+            elif self.currentcoststruct['msg']['src'].startswith('CC128-v'):                
                 # version CC128 ('envi') CurrentCost meters
                 trc.Trace("CC128 version : " + str(self.currentcoststruct['msg']['src']))
                 if 'hist' in self.currentcoststruct['msg']:
@@ -266,7 +277,7 @@ class CurrentCostDataParser:
                         if dataobj.startswith('data'):
                             trc.Trace("found data in history")
                             if self.currentcoststruct['msg']['hist'][dataobj]['sensor'] == '0':
-                                trc.Trace("data for sensor 0")
+                                trc.Trace("storing data for sensor 0")
                                 self.converter.storeTimedCurrentCostDatavcc128(today, ccdb, self.currentcoststruct['msg']['hist'][dataobj])                            
                                 keys = (self.currentcoststruct['msg']['hist'][dataobj]).keys()
                                 keys.sort()
@@ -294,5 +305,18 @@ class CurrentCostDataParser:
                                         # in it) we assume that there can be at most 1 update remaining
                                         updatesremaining = 1
                                         break
+                                    else:
+                                        trc.Trace("Uknown data in history", keynumchk, self.currentcoststruct['msg']['hist'][dataobj])
+                            else:
+                                trc.Trace("Got data for sensor %s, sensors others than 0 are not supported yet" % self.currentcoststruct['msg']['hist'][dataobj]['sensor'] + str( self.currentcoststruct['msg']['hist'][dataobj]))
+
+                else:
+                    trc.Trace("This is not a history packet, ignoring: " + str( self.currentcoststruct))
+            else:
+                trc.Trace("Unknow currentcost hardware version for xmldata: " + str( self.currentcoststruct))
+        else:
+            trc.Trace("<src> not found in <msg>, Unknow xml format: " + str( self.currentcoststruct))
+
+
         trc.FunctionExit("storeTimedCurrentCostData")
         return updatesremaining
